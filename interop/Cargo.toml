@@ -1,0 +1,17 @@
+[package]
+name = "sovra-remote-interop"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+sovra-remote-ffi = { path = "../modules/sovra-remote/rust" }
+sovra-mesh = { path = "../../SovraHarness/crates/sovra-mesh" }
+sovra-core = { path = "../../SovraHarness/crates/sovra-core" }
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+sovra-runtime = { path = "../../SovraHarness/crates/sovra-runtime" }
+sovra-whatsapp = { path = "../../SovraHarness/crates/sovra-whatsapp" }
+getrandom = "0.3"

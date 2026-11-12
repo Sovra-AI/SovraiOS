@@ -1,0 +1,15 @@
+# uniffi-bindgen-react-native: builds rust/ into this turbo module.
+# https://jhugman.github.io/uniffi-bindgen-react-native/reference/config-yaml.html
+rust:
+  directory: ./rust
+  manifestPath: Cargo.toml
+android:
+  # Phones and the x86_64 emulator. Add armeabi-v7a / x86 for older devices.
+  targets:
+    - arm64-v8a
+    - x86_64
+  apiLevel: 24
+ios:
+  targets:
+    - aarch64-apple-ios
+    - aarch64-apple-ios-sim

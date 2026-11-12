@@ -1,0 +1,31 @@
+[package]
+name = "sovra-remote-ffi"
+description = "Phone side of the Sovra Harness remote-control transport (Iroh QUIC, ALPN sovra/remote-control/1)."
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+license = "MIT"
+publish = false
+
+[lib]
+name = "sovra_remote_ffi"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+# Must speak the same wire protocol as the desktop: SovraHarness pins iroh 1.4.1
+# (root Cargo.toml). Keep these two in lockstep.
+iroh = { version = "=1.4.1", default-features = false, features = ["tls-ring", "portmapper"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["time", "rt-multi-thread", "macros"] }
+uniffi = { version = "=0.31", features = ["tokio"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+# Shared library builds must not be stripped, or turbo-module generation breaks.
+strip = "none"
+lto = "thin"
+opt-level = "s"

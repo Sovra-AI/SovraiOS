@@ -1,0 +1,52 @@
+{
+  "name": "sovra-remote",
+  "version": "0.1.0",
+  "description": "Encrypted Iroh transport to the Sovra Harness desktop (Rust via UniFFI)",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "files": [
+    "src",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "react-native.config.js",
+    "!android/build",
+    "!ios/build"
+  ],
+  "scripts": {
+    "ubrn:android": "ubrn build android --and-generate --release",
+    "ubrn:ios": "ubrn build ios --and-generate --release && echo \"Now run: npx pod-install (from the app root, via expo prebuild)\""
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sovra-AI/SovraReactNative.git"
+  },
+  "author": "Sovra AI <dev@sovra.ai> (https://github.com/Sovra-AI)",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Sovra-AI/SovraReactNative/issues"
+  },
+  "homepage": "https://github.com/Sovra-AI/SovraReactNative#readme",
+  "devDependencies": {},
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "SovraRemoteSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "ai.sovra.remote.transport"
+    }
+  },
+  "private": true,
+  "react-native": "./src/index.tsx",
+  "dependencies": {}
+}

@@ -36,8 +36,21 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-example
+
 
 # generated native folders
 /ios
 /android
+
+# Rust turbo module (rebuild with `npm run native:android` / `native:ios`)
+modules/sovra-remote/rust/target/
+modules/sovra-remote/android/src/main/jniLibs/
+modules/sovra-remote/android/build/
+modules/sovra-remote/android/.cxx/
+modules/sovra-remote/*.xcframework
+modules/sovra-remote/build/
+*.a
+
+# Interop tests (need ../SovraHarness)
+interop/target/
+interop/Cargo.lock
