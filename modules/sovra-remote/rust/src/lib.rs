@@ -829,4 +829,53 @@ mod tests {
         phone.close().await;
         desktop.close().await;
     }
+
+    /// Sovra's own relay: the computer is pinned to it, the pairing code names it, and the
+    /// phone reaches the computer through it with no direct path and no n0 relay involved.
+    /// Set `SOVRA_TEST_RELAY` to the relay under test (local `iroh-relay` or the deployment).
+    #[tokio::test]
+    #[ignore = "needs a running relay at SOVRA_TEST_RELAY; run explicitly"]
+    async fn phone_reaches_a_computer_pinned_to_sovras_own_relay() {
+        let relay: RelayUrl = std::env::var("SOVRA_TEST_RELAY").unwrap().parse().unwrap();
+        let desktop = Endpoint::builder(presets::N0)
+            .relay_mode(iroh::RelayMode::Custom(iroh::RelayMap::from_iter([
+                relay.clone()
+            ])))
+            .alpns(vec![REMOTE_ALPN.to_vec()])
+            .bind()
+            .await
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(10), desktop.online())
+            .await
+            .expect("the computer reaches Sovra's relay");
+        assert_eq!(desktop.addr().relay_urls().next(), Some(&relay));
+        let accept = {
+            let desktop = desktop.clone();
+            tokio::spawn(async move {
+                let connection = desktop.accept().await.unwrap().await.unwrap();
+                let (mut send, mut recv) = connection.accept_bi().await.unwrap();
+                let request = recv.read_to_end(MAX_REQUEST_BYTES).await.unwrap();
+                send.write_all(&request).await.unwrap();
+                send.finish().unwrap();
+                connection.closed().await;
+            })
+        };
+        let phone = PhoneEndpoint::bind_relay_only(generate_phone_secret())
+            .await
+            .unwrap();
+        let code = format!(
+            r#"{{"device":"{}","relay":"{relay}","addrs":[]}}"#,
+            to_hex(desktop.id().as_bytes())
+        );
+        let connection = phone.connect(code).await.unwrap();
+        assert_eq!(
+            connection.request(r#"{"echo":2}"#.into()).await.unwrap(),
+            r#"{"echo":2}"#
+        );
+        assert_eq!(connection.route(), "relay");
+        connection.close();
+        phone.close().await;
+        accept.abort();
+        desktop.close().await;
+    }
 }
