@@ -1,6 +1,6 @@
 import type { ConnectionProgress } from '@/state/remote';
 
-import { describeConnection, pairingStatus, routeLabel, showConnectionCard } from '../connection-status';
+import { describeConnection, diagnosticLines, pairingStatus, routeLabel, showConnectionCard } from '../connection-status';
 
 const at = (patch: Partial<ConnectionProgress>): ConnectionProgress => ({ step: 'reaching', attempt: 1, since: 0, retryAt: null, ...patch });
 
@@ -60,5 +60,27 @@ describe('pairingStatus', () => {
     expect(pairingStatus(0)).toBe('Pairing securely with your computer…');
     expect(pairingStatus(2400)).toBe('Pairing securely with your computer… 2 s');
     expect(pairingStatus(9000)).toMatch(/9 s\. Over mobile data/);
+  });
+});
+
+describe('diagnosticLines', () => {
+  it('says which relay, addresses and resolvers worked', () => {
+    const report = JSON.stringify({
+      relaysEnabled: true,
+      relays: [{ url: 'https://aps1-1.relay.n0.iroh.link./', connected: false, error: 'connection refused' }],
+      direct: ['10.0.0.2:5000'],
+      dns: { host: 'relay.example', phone: { addresses: 2, ms: 12 }, builtin: { error: 'Request timed out', ms: 3000 } },
+    });
+    expect(diagnosticLines(report)).toEqual([
+      'Relay aps1-1.relay.n0.iroh.link: not connected (connection refused)',
+      "This phone's direct addresses: 10.0.0.2:5000",
+      'DNS relay.example: phone resolver 2 address(es) in 12 ms',
+      'DNS relay.example: built-in resolver failed after 3000 ms (Request timed out)',
+    ]);
+  });
+
+  it('says plainly when the phone has no relay at all', () => {
+    expect(diagnosticLines(JSON.stringify({ relaysEnabled: true, relays: [], direct: [], dns: null }))[0]).toMatch(/none yet/);
+    expect(diagnosticLines(null)).toEqual(['No transport report yet.']);
   });
 });

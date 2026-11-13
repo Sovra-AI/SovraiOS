@@ -17,7 +17,7 @@ use std::{
 };
 
 use iroh::{
-    Endpoint, EndpointAddr, PublicKey, RelayUrl, SecretKey, TransportAddr,
+    Endpoint, EndpointAddr, PublicKey, RelayUrl, SecretKey, TransportAddr, Watcher as _,
     dns::{BoxIter, DnsError, DnsResolver, Resolver, TxtRecordData},
     endpoint::{self, presets},
 };
@@ -37,6 +37,8 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 /// QUIC keep-alive. Carrier NATs drop idle UDP mappings in tens of seconds; a ping well
 /// inside that keeps a direct path open when a slow refresh (a large screenshot) leaves a gap.
 const KEEP_ALIVE: Duration = Duration::from_secs(10);
+/// After a failed try, how long to wait for a home relay before saying the network blocks it.
+const RELAY_CHECK: Duration = Duration::from_secs(3);
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TransportError {
@@ -227,6 +229,21 @@ fn target(address_json: &str) -> Result<EndpointAddr, TransportError> {
     Ok(EndpointAddr::from_parts(key, addrs))
 }
 
+/// Adds every default relay to the dialling hints. The computer's home relay can change
+/// after pairing (the nearest one at startup, another later), and on some mobile networks
+/// the phone cannot look its current one up. The computer is always on one of these, so a
+/// dial through all of them reaches it whichever it is on.
+fn with_every_default_relay(target: EndpointAddr) -> EndpointAddr {
+    let mut addrs: Vec<TransportAddr> = target.addrs.iter().cloned().collect();
+    for url in iroh::defaults::prod::default_relay_map().urls::<Vec<RelayUrl>>() {
+        let relay = TransportAddr::Relay(url);
+        if !addrs.contains(&relay) {
+            addrs.push(relay);
+        }
+    }
+    EndpointAddr::from_parts(target.id, addrs)
+}
+
 /// A fresh phone identity from OS randomness, as 64 hex digits. Store it in the
 /// platform secure store; it is the phone's long-term private key.
 #[uniffi::export]
@@ -249,6 +266,7 @@ fn internet_builder() -> endpoint::Builder {
 async fn bind_endpoint(
     secret_hex: String,
     builder: endpoint::Builder,
+    relays: bool,
 ) -> Result<Arc<PhoneEndpoint>, TransportError> {
     let secret = SecretKey::from_bytes(&parse_hex32(&secret_hex)?);
     let endpoint = builder
@@ -263,13 +281,15 @@ async fn bind_endpoint(
         .bind()
         .await
         .map_err(unreachable)?;
-    Ok(Arc::new(PhoneEndpoint { endpoint }))
+    Ok(Arc::new(PhoneEndpoint { endpoint, relays }))
 }
 
 /// The phone's Iroh endpoint. Bind once per foreground session; close on suspend.
 #[derive(Debug, uniffi::Object)]
 pub struct PhoneEndpoint {
     endpoint: Endpoint,
+    /// False for `Same Wi-Fi only`, which has no relay to report on.
+    relays: bool,
 }
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -282,14 +302,14 @@ impl PhoneEndpoint {
         } else {
             internet_builder()
         };
-        bind_endpoint(secret_hex, builder).await
+        bind_endpoint(secret_hex, builder, !local_only).await
     }
 
     /// No direct sockets at all: every byte goes through the desktop's encrypted relay over
     /// TCP 443. For checking the path a phone takes on a network that blocks UDP or the LAN.
     #[uniffi::constructor]
     pub async fn bind_relay_only(secret_hex: String) -> Result<Arc<Self>, TransportError> {
-        bind_endpoint(secret_hex, internet_builder().clear_ip_transports()).await
+        bind_endpoint(secret_hex, internet_builder().clear_ip_transports(), true).await
     }
 
     pub fn device_id(&self) -> String {
@@ -302,13 +322,28 @@ impl PhoneEndpoint {
         &self,
         address_json: String,
     ) -> Result<Arc<DesktopConnection>, TransportError> {
-        let target = target(&address_json)?;
+        let mut target = target(&address_json)?;
+        if self.relays {
+            target = with_every_default_relay(target);
+        }
         let expected = target.id;
-        let connection =
-            tokio::time::timeout(CONNECT_TIMEOUT, self.endpoint.connect(target, REMOTE_ALPN))
-                .await
-                .map_err(|_| TransportError::Timeout)?
-                .map_err(unreachable)?;
+        let attempt =
+            tokio::time::timeout(CONNECT_TIMEOUT, self.endpoint.connect(target, REMOTE_ALPN)).await;
+        let connection = match attempt {
+            Ok(Ok(connection)) => connection,
+            failed => {
+                // The phone may have moved (Wi-Fi to mobile data); let the next try use
+                // the new network's addresses and relay.
+                self.endpoint.network_change().await;
+                if !self.relays {
+                    return Err(match failed {
+                        Ok(Err(error)) => unreachable(error),
+                        _ => TransportError::Timeout,
+                    });
+                }
+                return Err(self.explain_failure().await);
+            }
+        };
         if connection.alpn() != REMOTE_ALPN || connection.remote_id() != expected {
             connection.close(0u32.into(), b"unexpected peer");
             return Err(protocol(
@@ -320,6 +355,84 @@ impl PhoneEndpoint {
 
     pub async fn close(&self) {
         self.endpoint.close().await;
+    }
+
+    /// What this endpoint knows about the network, as JSON, for Developer mode: home relay
+    /// state and last error, this phone's direct addresses, and a DNS check of the relay
+    /// host with both resolvers. Never includes keys.
+    pub async fn diagnostics(&self) -> String {
+        let relays: Vec<serde_json::Value> = self
+            .endpoint
+            .home_relay_status()
+            .get()
+            .into_iter()
+            .map(|status| {
+                serde_json::json!({
+                    "url": status.url().to_string(),
+                    "connected": status.is_connected(),
+                    "error": status.last_error().map(ToString::to_string),
+                })
+            })
+            .collect();
+        let direct: Vec<String> = self
+            .endpoint
+            .addr()
+            .ip_addrs()
+            .map(ToString::to_string)
+            .collect();
+        let dns = if self.relays {
+            Some(Self::dns_check("euc1-1.relay.n0.iroh.link").await)
+        } else {
+            None
+        };
+        serde_json::json!({
+            "relaysEnabled": self.relays,
+            "relays": relays,
+            "direct": direct,
+            "dns": dns,
+        })
+        .to_string()
+    }
+}
+
+impl PhoneEndpoint {
+    /// Resolves `host` with the phone's own resolver and with iroh's built-in one, for
+    /// Developer mode: shows whether this network's DNS is the problem.
+    async fn dns_check(host: &str) -> serde_json::Value {
+        let started = std::time::Instant::now();
+        let os = OsFirstResolver::os_lookup(host).await;
+        let os_ms = started.elapsed().as_millis() as u64;
+        let started = std::time::Instant::now();
+        let builtin = DnsResolver::new()
+            .lookup_ipv4_ipv6(host, DNS_FALLBACK_TIMEOUT)
+            .await
+            .map(|addrs| addrs.count());
+        let builtin_ms = started.elapsed().as_millis() as u64;
+        serde_json::json!({
+            "host": host,
+            "phone": { "addresses": os.len(), "ms": os_ms },
+            "builtin": match builtin {
+                Ok(count) => serde_json::json!({ "addresses": count, "ms": builtin_ms }),
+                Err(error) => serde_json::json!({ "error": error.to_string(), "ms": builtin_ms }),
+            },
+        })
+    }
+
+    /// Says which half failed: this network reaching the relay, or the computer behind it.
+    async fn explain_failure(&self) -> TransportError {
+        let relay = tokio::time::timeout(RELAY_CHECK, self.endpoint.online())
+            .await
+            .is_ok();
+        TransportError::Unreachable {
+            message: if relay {
+                "The encrypted relay is reachable, but your computer did not answer through it."
+                    .into()
+            } else {
+                "This phone cannot reach the encrypted relay on this network. A VPN, content \
+                 filter or firewall may be blocking it."
+                    .into()
+            },
+        }
     }
 }
 
@@ -420,6 +533,19 @@ mod tests {
         assert!(target(&spoof).is_err());
     }
 
+    #[test]
+    fn dialling_adds_every_default_relay_once_and_keeps_the_codes_hints() {
+        let device = phone_device_id(generate_phone_secret()).unwrap();
+        let code = target(&format!(
+            r#"{{"device":"{device}","relay":"https://euc1-1.relay.n0.iroh.link./","addrs":["192.168.0.2:4000"]}}"#
+        ))
+        .unwrap();
+        let dialled = with_every_default_relay(code);
+        let relays: Vec<_> = dialled.relay_urls().collect();
+        assert_eq!(relays.len(), 4, "{relays:?}");
+        assert_eq!(dialled.ip_addrs().count(), 1);
+    }
+
     #[tokio::test]
     async fn os_resolver_answers_from_the_system_without_public_dns() {
         let resolver = OsFirstResolver::new();
@@ -475,6 +601,105 @@ mod tests {
         connection.close();
         phone.close().await;
         accept.abort();
+        desktop.close().await;
+    }
+
+    /// A computer that is not online: the phone must blame the computer, not the network.
+    #[tokio::test]
+    #[ignore = "needs the Internet (n0 relays); run explicitly"]
+    async fn an_absent_computer_is_not_reported_as_a_blocked_network() {
+        let phone = PhoneEndpoint::bind_relay_only(generate_phone_secret())
+            .await
+            .unwrap();
+        let absent = phone_device_id(generate_phone_secret()).unwrap();
+        let error = phone
+            .connect(format!(
+                r#"{{"device":"{absent}","relay":null,"addrs":[]}}"#
+            ))
+            .await
+            .unwrap_err();
+        assert!(
+            error.to_string().contains("your computer did not answer"),
+            "{error}"
+        );
+        phone.close().await;
+    }
+
+    #[tokio::test]
+    #[ignore = "needs the Internet (n0 relays); run explicitly"]
+    async fn diagnostics_report_the_relay_and_both_resolvers() {
+        let phone = PhoneEndpoint::bind(generate_phone_secret(), false)
+            .await
+            .unwrap();
+        phone.endpoint.online().await;
+        let report: serde_json::Value = serde_json::from_str(&phone.diagnostics().await).unwrap();
+        eprintln!("{report:#}");
+        assert_eq!(report["relays"][0]["connected"], true);
+        assert!(report["dns"]["phone"]["addresses"].as_u64().unwrap() > 0);
+        phone.close().await;
+    }
+
+    /// The 4G failure: the pairing code names a relay the computer has since left, and the
+    /// phone cannot look the computer up. Dialling through every default relay still works.
+    #[tokio::test]
+    #[ignore = "needs the Internet (n0 relays); run explicitly"]
+    async fn every_default_relay_reaches_a_computer_that_moved_relay() {
+        let desktop = Endpoint::builder(presets::N0)
+            .alpns(vec![REMOTE_ALPN.to_vec()])
+            .bind()
+            .await
+            .unwrap();
+        desktop.online().await;
+        let home = desktop.addr().relay_urls().next().unwrap().clone();
+        let accept = {
+            let desktop = desktop.clone();
+            tokio::spawn(async move {
+                loop {
+                    let Some(incoming) = desktop.accept().await else {
+                        break;
+                    };
+                    if let Ok(connection) = incoming.await {
+                        tokio::spawn(async move { connection.closed().await });
+                    }
+                }
+            })
+        };
+        let stale = iroh::defaults::prod::default_relay_map()
+            .urls::<Vec<RelayUrl>>()
+            .into_iter()
+            .find(|url| *url != home)
+            .unwrap();
+        let phone = Endpoint::builder(presets::N0)
+            .clear_address_lookup()
+            .clear_ip_transports()
+            .bind()
+            .await
+            .unwrap();
+        let only_stale =
+            EndpointAddr::from_parts(desktop.id(), [TransportAddr::Relay(stale.clone())]);
+        let control = tokio::time::timeout(
+            Duration::from_secs(10),
+            phone.connect(only_stale, REMOTE_ALPN),
+        )
+        .await;
+        assert!(
+            !matches!(control, Ok(Ok(_))),
+            "the stale relay alone should not reach the computer"
+        );
+        let all = EndpointAddr::from_parts(
+            desktop.id(),
+            std::iter::once(TransportAddr::Relay(stale)).chain(
+                iroh::defaults::prod::default_relay_map()
+                    .urls::<Vec<RelayUrl>>()
+                    .into_iter()
+                    .map(TransportAddr::Relay),
+            ),
+        );
+        let fixed =
+            tokio::time::timeout(Duration::from_secs(15), phone.connect(all, REMOTE_ALPN)).await;
+        assert!(matches!(fixed, Ok(Ok(_))), "{fixed:?}");
+        accept.abort();
+        phone.close().await;
         desktop.close().await;
     }
 }

@@ -86,5 +86,6 @@ export async function createNativeTransport(reach: Reach): Promise<PhoneTranspor
       }
     },
     close: () => endpoint.close(),
+    diagnostics: () => endpoint.diagnostics(),
   };
 }

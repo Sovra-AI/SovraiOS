@@ -2,13 +2,14 @@
  * Live progress while the phone connects: each step, how long it has been trying, the
  * countdown to the next try, and what to check. Ticks once a second while shown.
  */
+import * as Clipboard from 'expo-clipboard';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import type { ConnectionProgress } from '@/state/remote';
+import type { AttemptRecord, ConnectionProgress } from '@/state/remote';
 import { useTheme } from '@/theme';
 
-import { type StepState, describeConnection, pairingStatus, showConnectionCard } from './connection-status';
+import { type StepState, describeConnection, diagnosticLines, pairingStatus, showConnectionCard } from './connection-status';
 import { Button, Surface, Text } from './ui';
 
 function StepMark({ state }: { state: StepState }) {
@@ -96,4 +97,47 @@ export function usePairingStatus(active: boolean): string | null {
     };
   }, [active]);
   return active ? pairingStatus(elapsed) : null;
+}
+
+/** Developer mode: every failed try, the transport's report, and a way to copy them. */
+export function DeveloperPanel({
+  attempts,
+  diagnostics,
+  route,
+  phase,
+}: {
+  attempts: AttemptRecord[];
+  diagnostics: string | null;
+  route: string | null;
+  phase: string;
+}) {
+  const theme = useTheme();
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    // Public facts only: no keys or pairing link are ever in this report.
+    void Clipboard.setStringAsync(JSON.stringify({ phase, route, attempts, diagnostics: diagnostics ? JSON.parse(diagnostics) : null }, null, 2)).then(() =>
+      setCopied(true),
+    );
+  };
+  return (
+    <Surface variant="subtle" style={{ gap: theme.space.snug }}>
+      <Text variant="sectionTitle">Developer details</Text>
+      <Text variant="caption" tone="secondary">
+        State: {phase}
+        {route ? ` · route: ${route}` : ''}
+      </Text>
+      {diagnosticLines(diagnostics).map((line) => (
+        <Text key={line} variant="caption" tone="secondary" selectable>
+          {line}
+        </Text>
+      ))}
+      {attempts.length > 0 ? <Text variant="caption">Failed tries (newest first)</Text> : null}
+      {attempts.map((attempt) => (
+        <Text key={`${attempt.at}-${attempt.attempt}`} variant="caption" tone="muted" selectable>
+          #{attempt.attempt} {new Date(attempt.at).toLocaleTimeString()} · {attempt.ms} ms · {attempt.code}: {attempt.message}
+        </Text>
+      ))}
+      <Button label={copied ? 'Copied' : 'Copy details'} size="compact" onPress={copy} />
+    </Surface>
+  );
 }

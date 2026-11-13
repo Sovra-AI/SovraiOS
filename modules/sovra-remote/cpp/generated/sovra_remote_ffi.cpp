@@ -183,6 +183,9 @@ extern "C" {
         /*handle*/ uint64_t ptr, 
         RustCallStatus *uniffi_out_err
     );
+    /*handle*/ uint64_t uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(
+        /*handle*/ uint64_t ptr
+    );
     RustBuffer uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(RustCallStatus *uniffi_out_err
     );
     RustBuffer uniffi_sovra_remote_ffi_fn_func_phone_device_id(
@@ -405,6 +408,8 @@ extern "C" {
     uint16_t uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_connect(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(
+    );
+    uint16_t uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(
     );
@@ -2022,6 +2027,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret"),
@@ -2502,6 +2515,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind"),
@@ -2840,6 +2861,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_method_phoneendp
 
         
         return uniffi::sovra_remote_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
@@ -3297,6 +3325,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_pho
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(
         );
 
         

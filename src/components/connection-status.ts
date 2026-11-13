@@ -94,3 +94,35 @@ export function pairingStatus(elapsedMs: number): string {
   if (elapsedMs >= SLOW_MS) return `Pairing securely with your computer… ${elapsed} s. Over mobile data or a new network this can take a little longer.`;
   return elapsed > 0 ? `Pairing securely with your computer… ${elapsed} s` : 'Pairing securely with your computer…';
 }
+
+/** One line per fact in the transport's diagnostics JSON, for Developer mode. */
+export function diagnosticLines(json: string | null): string[] {
+  if (!json) return ['No transport report yet.'];
+  let report: Record<string, unknown>;
+  try {
+    report = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return ['Unreadable transport report.'];
+  }
+  if (typeof report.error === 'string') return [`Report failed: ${report.error}`];
+  const lines: string[] = [];
+  if (report.relaysEnabled === false) lines.push('Relays: off (Same Wi-Fi only)');
+  const relays = Array.isArray(report.relays) ? (report.relays as { url?: string; connected?: boolean; error?: string | null }[]) : [];
+  if (report.relaysEnabled !== false && relays.length === 0) lines.push('Relay: none yet (this phone has not reached any relay)');
+  for (const relay of relays) {
+    const host = (relay.url ?? '').replace(/^https:\/\//, '').replace(/\.?\/$/, '');
+    lines.push(`Relay ${host}: ${relay.connected ? 'connected' : 'not connected'}${relay.error ? ` (${relay.error})` : ''}`);
+  }
+  const direct = Array.isArray(report.direct) ? (report.direct as string[]) : [];
+  lines.push(`This phone's direct addresses: ${direct.length > 0 ? direct.join(', ') : 'none'}`);
+  const dns = report.dns as { host?: string; phone?: { addresses?: number; ms?: number }; builtin?: { addresses?: number; error?: string; ms?: number } } | null;
+  if (dns) {
+    lines.push(`DNS ${dns.host}: phone resolver ${dns.phone?.addresses ?? 0} address(es) in ${dns.phone?.ms ?? 0} ms`);
+    lines.push(
+      dns.builtin?.error
+        ? `DNS ${dns.host}: built-in resolver failed after ${dns.builtin.ms ?? 0} ms (${dns.builtin.error})`
+        : `DNS ${dns.host}: built-in resolver ${dns.builtin?.addresses ?? 0} address(es) in ${dns.builtin?.ms ?? 0} ms`,
+    );
+  }
+  return lines;
+}

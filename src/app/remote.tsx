@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatPanel } from '@/components/chat-panel';
 import { ComputerPanel } from '@/components/computer-panel';
-import { ConnectionCard } from '@/components/connection-card';
+import { ConnectionCard, DeveloperPanel } from '@/components/connection-card';
 import { routeLabel } from '@/components/connection-status';
 import { ChatsView, SkillsView } from '@/components/desktop-views';
 import { Button, NoticeBanner, Surface, Text } from '@/components/ui';
@@ -14,6 +14,7 @@ import { findComposer } from '@/remote/elements';
 import { moreChats, openChatPage, openConversation, searchChats } from '@/remote/navigate';
 import type { Skill } from '@/remote/skills';
 import type { UiElement } from '@/remote/wire';
+import { usePreferences } from '@/state/preferences';
 import { type Phase, useRemote } from '@/state/remote';
 import { useTheme } from '@/theme';
 
@@ -54,7 +55,8 @@ const SKILL_PAGE_GRACE_MS = 15000;
 
 export default function Remote() {
   const theme = useTheme();
-  const { phase, desktop, snapshot, screenshot, detail, notice, working, skills, progress, route } = useRemote();
+  const { phase, desktop, snapshot, screenshot, detail, notice, working, skills, progress, route, attempts, diagnostics } = useRemote();
+  const developer = usePreferences((state) => state.developer);
   const [tab, setTab] = useState<Tab>('chat');
   const [chosen, setChosen] = useState<Skill | null>(null);
 
@@ -183,6 +185,8 @@ export default function Remote() {
               onRetry={() => useRemote.getState().retryNow()}
             />
           ) : null}
+
+          {developer ? <DeveloperPanel attempts={attempts} diagnostics={diagnostics} route={route} phase={phase} /> : null}
 
           {recovery && !live ? (
             <Surface variant="elevated" style={{ gap: theme.space.small + 4 }}>

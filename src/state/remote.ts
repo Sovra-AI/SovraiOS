@@ -45,6 +45,18 @@ export interface ConnectionProgress {
   retryAt: number | null;
 }
 
+/** One failed try, for Developer mode. */
+export interface AttemptRecord {
+  at: number;
+  attempt: number;
+  /** How long the try took before it failed. */
+  ms: number;
+  code: string;
+  message: string;
+}
+
+const MAX_ATTEMPTS_KEPT = 8;
+
 export type TransportFactory = (reach: Reach) => Promise<PhoneTransport>;
 
 interface RemoteState {
@@ -63,6 +75,10 @@ interface RemoteState {
   progress: ConnectionProgress | null;
   /** How the connection reaches the computer, while connected. */
   route: Route | null;
+  /** Developer mode: the last failed tries, newest first. */
+  attempts: AttemptRecord[];
+  /** Developer mode: the transport's own report (JSON) from the last failure or connection. */
+  diagnostics: string | null;
 
   init(factory: TransportFactory): Promise<void>;
   pair(link: string, phoneName: string, desktopName: string): Promise<Outcome<null>>;
@@ -142,6 +158,21 @@ function reaching(step: ConnectionProgress['step'], set: (patch: Partial<RemoteS
   set({ progress: { ...progress, step, attempt, retryAt: null } });
 }
 
+/** Developer mode: log the failed try and keep the endpoint's own report before it is dropped. */
+async function recordFailure(
+  code: string,
+  message: string,
+  started: number,
+  set: (patch: Partial<RemoteState>) => void,
+  get: () => RemoteState,
+) {
+  if (!usePreferences.getState().developer) return;
+  const record: AttemptRecord = { at: Date.now(), attempt: get().progress?.attempt ?? 1, ms: Date.now() - started, code, message };
+  set({ attempts: [record, ...get().attempts].slice(0, MAX_ATTEMPTS_KEPT) });
+  const report = await transport?.diagnostics?.().catch((error: unknown) => JSON.stringify({ error: String(error) }));
+  if (report) set({ diagnostics: report });
+}
+
 /** The try failed: wait, then try again (unless the person must act first). */
 function retryLater(set: (patch: Partial<RemoteState>) => void, get: () => RemoteState) {
   const delay = backoff.next();
@@ -163,6 +194,8 @@ export const useRemote = create<RemoteState>((set, get) => ({
   skills: null,
   progress: null,
   route: null,
+  attempts: [],
+  diagnostics: null,
 
   async init(next) {
     factory = next;
@@ -211,12 +244,15 @@ export const useRemote = create<RemoteState>((set, get) => ({
   async refresh() {
     if (!get().desktop) return;
     const reconnecting = !client?.connected;
+    const started = Date.now();
     if (reconnecting) reaching(client ? 'reaching' : 'starting', set, get);
     let remote: RemoteClient | null;
     try {
       remote = await ensureClient();
     } catch (error) {
-      set({ phase: 'unreachable', detail: error instanceof Error ? error.message : String(error) });
+      const message = error instanceof Error ? error.message : String(error);
+      set({ phase: 'unreachable', detail: message });
+      await recordFailure('start', message, started, set, get);
       retryLater(set, get);
       return;
     }
@@ -232,6 +268,10 @@ export const useRemote = create<RemoteState>((set, get) => ({
         screenshot = shot.ok ? shot.value : null;
       }
       set({ phase: 'connected', snapshot: view.value, screenshot, updatedAt: Date.now(), detail: null, progress: null, route: remote.route });
+      if (reconnecting && usePreferences.getState().developer) {
+        const report = await transport?.diagnostics?.().catch(() => null);
+        if (report) set({ diagnostics: report });
+      }
       schedule(usePreferences.getState().refreshMs);
       return;
     }
@@ -241,6 +281,10 @@ export const useRemote = create<RemoteState>((set, get) => ({
       set({ progress: null });
       return; // needs the person, not a retry
     }
+    // The network may have changed under the endpoint (Wi-Fi to mobile data): bind a fresh
+    // one on the next try instead of retrying on sockets that belong to the old network.
+    if (reconnecting || view.code === 'unreachable') await recordFailure(view.code, view.message, started, set, get);
+    if (view.code === 'unreachable') await resetClient();
     retryLater(set, get);
   },
 

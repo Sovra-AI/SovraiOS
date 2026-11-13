@@ -38,13 +38,29 @@ describe('connection progress', () => {
     desktop.unreachable = false;
     desktop.route = 'relay';
     useRemote.getState().retryNow();
-    expect(useRemote.getState().progress).toMatchObject({ step: 'reaching', attempt: 2, retryAt: null });
+    // The failed endpoint was dropped, so the next try starts by binding a fresh one.
+    expect(useRemote.getState().progress).toMatchObject({ step: 'starting', attempt: 2, retryAt: null });
     await settle();
     await settle();
     state = useRemote.getState();
     expect(state.phase).toBe('connected');
     expect(state.progress).toBeNull();
     expect(state.route).toBe('relay');
+  });
+
+  it('binds a fresh endpoint after a network failure', async () => {
+    const factory = jest.fn(async () => desktop.transport());
+    await useRemote.getState().init(factory);
+    desktop.unreachable = true;
+    useRemote.getState().startLive();
+    await settle();
+    expect(factory).toHaveBeenCalledTimes(1);
+    desktop.unreachable = false;
+    useRemote.getState().retryNow();
+    await settle();
+    await settle();
+    expect(useRemote.getState().phase).toBe('connected');
+    expect(factory).toHaveBeenCalledTimes(2);
   });
 
   it('does not start a second try while one is running', async () => {

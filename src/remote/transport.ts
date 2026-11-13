@@ -32,4 +32,6 @@ export interface PhoneTransport {
   deviceId(): string;
   connect(address: PeerAddress): Promise<DesktopConnection>;
   close(): Promise<void>;
+  /** Developer mode: relay state, direct addresses and a DNS check, as JSON. */
+  diagnostics?(): Promise<string>;
 }

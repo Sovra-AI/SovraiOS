@@ -83,6 +83,7 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close(uniffiSelf: bigint): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_connect(uniffiSelf: bigint, addressJson: Uint8Array): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
+    ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(uniffiSelf: bigint): bigint;
     ubrn_ffi_sovra_remote_ffi_uniffi_contract_version(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_func_phone_device_id(): number;
@@ -96,6 +97,7 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_connect(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(): number;
+    ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(): number;
     ubrn_uniffi_internal_fn_method_desktopconnection_ffi__bless_pointer(pointer: bigint, uniffi_out_err: UniffiRustCallStatus): UniffiGcObject;
     ubrn_uniffi_internal_fn_method_phoneendpoint_ffi__bless_pointer(pointer: bigint, uniffi_out_err: UniffiRustCallStatus): UniffiGcObject;
     // Codegen call sites use these via `nativeModule().rustbuffer_alloc(...)`

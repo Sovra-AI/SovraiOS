@@ -10,6 +10,8 @@ Add entries under **Unreleased** as part of the change that introduces them.
 
 ### Added
 
+- **Developer mode (Advanced settings).** Shows each connection try, the relay this phone uses
+  and a DNS check on the remote screen, with a button to copy them for a bug report.
 - **Connects from anywhere, not only the same Wi-Fi.** The transport resolves relay and
   address-lookup hosts with the phone's own DNS (DNS64/NAT64, VPN and Private DNS aware)
   instead of fixed public resolvers that iOS and many mobile networks block, so the phone
@@ -70,6 +72,10 @@ Add entries under **Unreleased** as part of the change that introduces them.
 
 ### Fixed
 
+- **Switching networks recovers.** After a failed try the phone binds a fresh endpoint, so
+  moving from Wi-Fi to mobile data no longer leaves it retrying on the old network's sockets.
+  A failure now says which half failed: this network reaching the encrypted relay, or the
+  computer behind it.
 - When the computer can't be reached, the detail under **Open Sovra on your computer** says
   "Your computer took too long to answer." instead of an internal name such as
   `TransportError.Timeout`, matching SovraAndroid.

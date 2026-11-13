@@ -36,6 +36,7 @@ class NativeSovraRemoteFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_func_phone_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_ffi_sovra_remote_ffi_rust_future_poll_u8(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
@@ -96,6 +97,7 @@ class NativeSovraRemoteFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_ffi_sovra_remote_ffi_uniffi_contract_version(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);

@@ -626,6 +626,12 @@ export interface PhoneEndpointLike {
  */
     connect(addressJson: string, asyncOpts_?: { signal: AbortSignal }) /*throws*/: Promise<DesktopConnectionLike>;
     deviceId(): string;
+/**
+ * What this endpoint knows about the network, as JSON, for Developer mode: home relay
+ * state and last error, this phone's direct addresses, and a DNS check of the relay
+ * host with both resolvers. Never includes keys.
+ */
+    diagnostics(asyncOpts_?: { signal: AbortSignal }): Promise<string>;
 }
 /**
  * @deprecated Use `PhoneEndpointLike` instead.
@@ -793,6 +799,50 @@ private constructor(pointer: UniffiHandle) {
     }
     }
     
+/**
+ * What this endpoint knows about the network, as JSON, for Developer mode: home relay
+ * state and last error, this phone's direct addresses, and a DNS check of the relay
+ * host with both resolvers. Never includes keys.
+ */
+    async diagnostics(asyncOpts_?: { signal: AbortSignal }): Promise<string> {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+        return await uniffiRustCallAsync(
+            /*rustCaller:*/ uniffiCaller,
+            /*rustFutureFunc:*/ () => {
+                return nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(
+                    uniffiTypePhoneEndpointObjectFactory.clonePointer(this)
+                );
+            },
+            /*pollFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_poll_rust_buffer,
+            /*cancelFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_cancel_rust_buffer,
+            /*completeFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_complete_rust_buffer,
+            /*freeFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_free_rust_buffer,
+            // Async returns always go through the JS-side converter: the
+            // completed future's value is deserialized here by the
+            // per-callable return-type converter.
+            // Borrowed view over foreign memory: the call site owns the free,
+            // as on the sync paths. Unconditional — a no-op where buffers are
+            // already JS-owned.
+            /*liftFunc:*/ (__rb) => {
+                try {
+                    return FfiConverterString.lift(__rb);
+                } finally {
+                    nativeModule().rustbuffer_free(__rb);
+                }
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+            /*asyncOpts:*/ asyncOpts_,
+            
+        );
+    } catch (__error: any) {
+        if (uniffiIsDebug && __error instanceof Error) {
+            __error.stack = __stack;
+        }
+        throw __error;
+    }
+    }
+    
 
     uniffiDestroy(): void {
         const ptr = (this as any)[destructorGuardSymbol];
@@ -917,6 +967,9 @@ function uniffiEnsureInitialized() {
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id() !== 14753) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id");
+    }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics() !== 43381) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_diagnostics");
     }
 
     }

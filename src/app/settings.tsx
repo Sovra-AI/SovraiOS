@@ -132,6 +132,14 @@ export default function Settings() {
                   accessibilityLabel="Same Wi-Fi only"
                 />
               </Row>
+              <Row title="Developer mode" detail="Shows each connection try, the relay this phone uses and a DNS check, with a button to copy them.">
+                <Switch
+                  value={preferences.developer}
+                  onValueChange={(developer) => preferences.set({ developer })}
+                  trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
+                  accessibilityLabel="Developer mode"
+                />
+              </Row>
               <Row title="Encrypted relay only" detail="For testing: skips direct connections, the way a phone on a strict network reaches your computer.">
                 <Switch
                   value={preferences.relayOnly}
