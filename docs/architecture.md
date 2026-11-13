@@ -102,8 +102,10 @@ The remote screen has four tabs: **Chat**, **Chats**, **Skills** and **Computer*
 
 ## Known limits
 
-- Reading replies needs desktop screenshots (unavailable on some desktop renderers,
-  including the current Linux one); without them only labelled text is shown.
+- Replies are read from the labels the desktop gives each message (`Comment` and
+  `Article`). Desktops older than that SovraHarness change fall back to a screenshot of the
+  conversation, which some renderers (including the current Linux one) cannot capture;
+  then only labelled text is shown.
 - Re-pairing a phone the desktop already remembers (e.g. after **Forget this computer** on
   the phone only): Hello proves access, then the phone still sends Pair with the code so the
   desktop closes it. Desktops older than the matching SovraHarness change refuse that Pair
