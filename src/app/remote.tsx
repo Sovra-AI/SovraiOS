@@ -10,6 +10,7 @@ import { routeLabel } from '@/components/connection-status';
 import { ChatsView, SkillsView } from '@/components/desktop-views';
 import { Button, NoticeBanner, Surface, Text } from '@/components/ui';
 import { NEW_CHAT_LABEL, transcript } from '@/remote/desktop';
+import { developerLog } from '@/remote/native-transport';
 import { findComposer } from '@/remote/elements';
 import { moreChats, openChatPage, openConversation, searchChats } from '@/remote/navigate';
 import type { Skill } from '@/remote/skills';
@@ -57,6 +58,7 @@ export default function Remote() {
   const theme = useTheme();
   const { phase, desktop, snapshot, screenshot, detail, notice, working, skills, progress, route, attempts, diagnostics } = useRemote();
   const developer = usePreferences((state) => state.developer);
+  const [details, setDetails] = useState(false);
   const [tab, setTab] = useState<Tab>('chat');
   const [chosen, setChosen] = useState<Skill | null>(null);
 
@@ -177,6 +179,10 @@ export default function Remote() {
 
           {notice ? <NoticeBanner tone={notice.tone} text={notice.text} onDismiss={() => useRemote.getState().dismissNotice()} /> : null}
 
+          {!developer && !live && (progress?.attempt ?? 0) > 1 ? (
+            <Button label={details ? 'Hide technical details' : 'Show technical details'} size="compact" variant="ghost" onPress={() => setDetails(!details)} />
+          ) : null}
+
           {progress && !live && (phase === 'connecting' || phase === 'unreachable') ? (
             <ConnectionCard
               progress={progress}
@@ -186,7 +192,7 @@ export default function Remote() {
             />
           ) : null}
 
-          {developer ? <DeveloperPanel attempts={attempts} diagnostics={diagnostics} route={route} phase={phase} /> : null}
+          {developer || details ? <DeveloperPanel attempts={attempts} diagnostics={diagnostics} route={route} phase={phase} readLog={developerLog} /> : null}
 
           {recovery && !live ? (
             <Surface variant="elevated" style={{ gap: theme.space.small + 4 }}>

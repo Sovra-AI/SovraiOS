@@ -126,3 +126,16 @@ export function diagnosticLines(json: string | null): string[] {
   }
   return lines;
 }
+
+/**
+ * Shortens one tracing line for a phone screen: time without the date, level, and the
+ * message with its innermost span (`2026-…T14:57:55.674Z DEBUG a:b:c{…}: iroh_relay::x: msg`).
+ */
+export function shortLogLine(line: string): string {
+  const match = /^\d{4}-\d{2}-\d{2}T(\d{2}:\d{2}:\d{2}\.\d{3})\d*Z\s+(\w+)\s+(.*)$/.exec(line);
+  if (!match) return line;
+  const [, time, level, rest] = match;
+  // Drop the span path before the target ("endpoint{…}:relay-actor:…: "), keep target and message.
+  const target = /(?:^|: )((?:[a-z_][a-z0-9_]*::)*[a-z_][a-z0-9_]*): (.*)$/.exec(rest);
+  return `${time} ${level.slice(0, 1)} ${target ? `${target[1].replace(/^iroh(_relay)?::/, '')}: ${target[2]}` : rest}`;
+}

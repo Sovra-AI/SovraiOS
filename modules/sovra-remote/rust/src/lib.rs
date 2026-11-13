@@ -176,6 +176,102 @@ impl Resolver for OsFirstResolver {
     }
 }
 
+/// Developer mode log: the most recent lines of iroh's own log and this module's events,
+/// kept in memory only and never written to disk. Holds endpoint IDs and network addresses,
+/// never keys, pairing links or message contents.
+mod devlog {
+    use std::{
+        collections::VecDeque,
+        io,
+        sync::{Mutex, OnceLock},
+    };
+
+    use tracing_subscriber::{
+        Layer as _, filter::Targets, layer::SubscriberExt as _, util::SubscriberInitExt as _,
+    };
+
+    const MAX_LINES: usize = 600;
+
+    static LINES: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
+    static INSTALLED: OnceLock<()> = OnceLock::new();
+
+    struct Ring;
+
+    impl io::Write for Ring {
+        fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+            let text = String::from_utf8_lossy(bytes);
+            let mut lines = LINES
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            for line in text.lines().filter(|line| !line.trim().is_empty()) {
+                if lines.len() == MAX_LINES {
+                    lines.pop_front();
+                }
+                lines.push_back(line.to_string());
+            }
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// Start capturing. Idempotent; a host that already set a global subscriber keeps it.
+    pub fn install() {
+        INSTALLED.get_or_init(|| {
+            let filter = Targets::new()
+                .with_target("sovra_remote_ffi", tracing::Level::DEBUG)
+                .with_target("iroh_relay", tracing::Level::DEBUG)
+                .with_target("iroh::socket", tracing::Level::DEBUG)
+                .with_target("iroh::endpoint", tracing::Level::DEBUG)
+                .with_target("iroh::address_lookup", tracing::Level::DEBUG)
+                .with_target("iroh_dns", tracing::Level::DEBUG)
+                .with_target("iroh", tracing::Level::INFO);
+            let layer = tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_target(true)
+                .with_writer(|| Ring)
+                .with_filter(filter);
+            let _ = tracing_subscriber::registry().with(layer).try_init();
+        });
+    }
+
+    pub fn recent() -> Vec<String> {
+        LINES
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn clear() {
+        LINES
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clear();
+    }
+}
+
+/// Developer mode: start keeping iroh's log in memory (call before binding to see startup).
+#[uniffi::export]
+pub fn start_developer_log() {
+    devlog::install();
+}
+
+/// Developer mode: the most recent log lines, oldest first.
+#[uniffi::export]
+pub fn developer_log() -> Vec<String> {
+    devlog::recent()
+}
+
+/// Developer mode: forget the captured log.
+#[uniffi::export]
+pub fn clear_developer_log() {
+    devlog::clear();
+}
+
 /// `sovra_core::group::PeerAddress`: desktop public key (64 hex) plus routing hints.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -327,11 +423,26 @@ impl PhoneEndpoint {
             target = with_every_default_relay(target);
         }
         let expected = target.id;
+        let started = std::time::Instant::now();
+        tracing::info!(
+            computer = %expected.fmt_short(),
+            relays = target.relay_urls().count(),
+            direct = target.ip_addrs().count(),
+            "dialling the computer"
+        );
         let attempt =
             tokio::time::timeout(CONNECT_TIMEOUT, self.endpoint.connect(target, REMOTE_ALPN)).await;
         let connection = match attempt {
-            Ok(Ok(connection)) => connection,
+            Ok(Ok(connection)) => {
+                tracing::info!(ms = started.elapsed().as_millis() as u64, "connected");
+                connection
+            }
             failed => {
+                let ms = started.elapsed().as_millis() as u64;
+                match &failed {
+                    Ok(Err(error)) => tracing::warn!(ms, %error, "dial failed"),
+                    _ => tracing::warn!(ms, "dial timed out"),
+                }
                 // The phone may have moved (Wi-Fi to mobile data); let the next try use
                 // the new network's addresses and relay.
                 self.endpoint.network_change().await;
@@ -423,6 +534,14 @@ impl PhoneEndpoint {
         let relay = tokio::time::timeout(RELAY_CHECK, self.endpoint.online())
             .await
             .is_ok();
+        for status in self.endpoint.home_relay_status().get() {
+            tracing::warn!(
+                relay = %status.url(),
+                connected = status.is_connected(),
+                error = ?status.last_error().map(ToString::to_string),
+                "relay state after a failed dial"
+            );
+        }
         TransportError::Unreachable {
             message: if relay {
                 "The encrypted relay is reachable, but your computer did not answer through it."
@@ -608,6 +727,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "needs the Internet (n0 relays); run explicitly"]
     async fn an_absent_computer_is_not_reported_as_a_blocked_network() {
+        start_developer_log();
         let phone = PhoneEndpoint::bind_relay_only(generate_phone_secret())
             .await
             .unwrap();
@@ -622,6 +742,13 @@ mod tests {
             error.to_string().contains("your computer did not answer"),
             "{error}"
         );
+        let log = developer_log();
+        eprintln!("{}", log.join("\n"));
+        assert!(
+            log.iter()
+                .any(|line| line.contains("dialling the computer"))
+        );
+        assert!(log.iter().any(|line| line.contains("relay")));
         phone.close().await;
     }
 

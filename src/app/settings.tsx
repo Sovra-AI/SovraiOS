@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 
 import { Button, Surface, Text } from '@/components/ui';
-import { phoneSecret } from '@/remote/native-transport';
+import { enableDeveloperLog, phoneSecret } from '@/remote/native-transport';
 import { usePreferences } from '@/state/preferences';
 import { useRemote } from '@/state/remote';
 import { type Appearance, useTheme } from '@/theme';
@@ -135,7 +135,10 @@ export default function Settings() {
               <Row title="Developer mode" detail="Shows each connection try, the relay this phone uses and a DNS check, with a button to copy them.">
                 <Switch
                   value={preferences.developer}
-                  onValueChange={(developer) => preferences.set({ developer })}
+                  onValueChange={(developer) => {
+                    preferences.set({ developer });
+                    if (developer) enableDeveloperLog();
+                  }}
                   trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
                   accessibilityLabel="Developer mode"
                 />

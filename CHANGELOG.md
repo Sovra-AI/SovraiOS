@@ -42,6 +42,9 @@ Add entries under **Unreleased** as part of the change that introduces them.
 
 ### Changed
 
+- **Clearer scanning and pairing.** Scanning says when a code is not a Sovra pairing code or
+  may have expired, shows "Code read. Pairing…", and a pairing that does not finish offers
+  **Show technical details**. Developer mode also shows the transport's own log.
 - **SovraiOS README.** The repository page uses the Sovra README layout: logo, title,
   quick start, data boundaries, development, and guides. Package and crate manifests
   declare `LicenseRef-SustainableUse-1.0`.

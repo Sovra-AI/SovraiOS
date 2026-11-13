@@ -4,12 +4,12 @@
  */
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 
 import type { AttemptRecord, ConnectionProgress } from '@/state/remote';
 import { useTheme } from '@/theme';
 
-import { type StepState, describeConnection, diagnosticLines, pairingStatus, showConnectionCard } from './connection-status';
+import { type StepState, describeConnection, diagnosticLines, pairingStatus, shortLogLine, showConnectionCard } from './connection-status';
 import { Button, Surface, Text } from './ui';
 
 function StepMark({ state }: { state: StepState }) {
@@ -100,24 +100,39 @@ export function usePairingStatus(active: boolean): string | null {
 }
 
 /** Developer mode: every failed try, the transport's report, and a way to copy them. */
+const LOG_LINES_SHOWN = 120;
+
 export function DeveloperPanel({
   attempts,
   diagnostics,
   route,
   phase,
+  readLog,
 }: {
   attempts: AttemptRecord[];
   diagnostics: string | null;
   route: string | null;
   phase: string;
+  /** The transport's live log; polled while the panel is shown. */
+  readLog?: () => string[];
 }) {
   const theme = useTheme();
   const [copied, setCopied] = useState(false);
+  const [log, setLog] = useState<string[]>([]);
+  useEffect(() => {
+    if (!readLog) return;
+    const read = () => setLog(readLog());
+    const timer = setInterval(read, 1500);
+    const first = setTimeout(read, 0);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(first);
+    };
+  }, [readLog]);
   const copy = () => {
-    // Public facts only: no keys or pairing link are ever in this report.
-    void Clipboard.setStringAsync(JSON.stringify({ phase, route, attempts, diagnostics: diagnostics ? JSON.parse(diagnostics) : null }, null, 2)).then(() =>
-      setCopied(true),
-    );
+    // Public facts only: no keys or pairing link are ever in this report or the log.
+    const report = { phase, route, attempts, diagnostics: diagnostics ? (JSON.parse(diagnostics) as unknown) : null, log: readLog?.() ?? [] };
+    void Clipboard.setStringAsync(JSON.stringify(report, null, 2)).then(() => setCopied(true));
   };
   return (
     <Surface variant="subtle" style={{ gap: theme.space.snug }}>
@@ -137,6 +152,19 @@ export function DeveloperPanel({
           #{attempt.attempt} {new Date(attempt.at).toLocaleTimeString()} · {attempt.ms} ms · {attempt.code}: {attempt.message}
         </Text>
       ))}
+      {readLog ? (
+        <>
+          <Text variant="caption">Transport log (newest last, {log.length} lines)</Text>
+          <ScrollView
+            style={{ maxHeight: 280, borderRadius: theme.radius.button, backgroundColor: theme.colors.codeBackground }}
+            contentContainerStyle={{ padding: theme.space.small }}
+            nestedScrollEnabled>
+            <Text selectable style={{ fontFamily: 'Menlo', fontSize: 10, lineHeight: 13, color: theme.colors.secondaryText }}>
+              {log.slice(-LOG_LINES_SHOWN).map(shortLogLine).join('\n') || 'Nothing logged yet.'}
+            </Text>
+          </ScrollView>
+        </>
+      ) : null}
       <Button label={copied ? 'Copied' : 'Copy details'} size="compact" onPress={copy} />
     </Surface>
   );

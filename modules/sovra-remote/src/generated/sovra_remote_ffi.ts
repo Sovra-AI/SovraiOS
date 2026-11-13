@@ -6,7 +6,7 @@
 import nativeModule from "./sovra_remote_ffi-ffi";
 import { type UniffiRustFutureContinuationCallback, type UniffiForeignFutureDroppedCallback, type UniffiForeignFutureDroppedCallbackStruct,
 } from "./sovra_remote_ffi-ffi";
-import { type FfiConverter, type UniffiByteArray, type UniffiGcObject, type UniffiHandle, type UniffiObjectFactory, AbstractFfiConverterByteArray, Cursor, FfiConverterBool, FfiConverterObject, FfiConverterUInt8, RustBuffer, UniffiAbstractObject, UniffiError, UniffiInternalError, UniffiRustCaller, destructorGuardSymbol, pointerLiteralSymbol, uniffiCreateFfiConverterString, uniffiRustCallAsync, uniffiTypeNameSymbol, variantOrdinalSymbol,
+import { type FfiConverter, type UniffiByteArray, type UniffiGcObject, type UniffiHandle, type UniffiObjectFactory, AbstractFfiConverterByteArray, Cursor, FfiConverterArray, FfiConverterBool, FfiConverterObject, FfiConverterUInt8, RustBuffer, UniffiAbstractObject, UniffiError, UniffiInternalError, UniffiRustCaller, destructorGuardSymbol, pointerLiteralSymbol, uniffiCreateFfiConverterString, uniffiRustCallAsync, uniffiTypeNameSymbol, variantOrdinalSymbol,
 } from "@ubjs/core";
 const uniffiCaller = new UniffiRustCaller(() => ({ code: 0 }));
 
@@ -18,6 +18,35 @@ const uniffiIsDebug =
   false;
 
 // Public interface members begin here.
+
+/**
+ * Developer mode: forget the captured log.
+ */
+export function clearDeveloperLog(): void {uniffiCaller.rustCall(
+            /*caller:*/ (callStatus) => { nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_func_clear_developer_log(
+                callStatus);
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+    }
+
+/**
+ * Developer mode: the most recent log lines, oldest first.
+ */
+export function developerLog(): Array<string> {
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+            /*caller:*/ (callStatus) => {
+                return nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_func_developer_log(
+                callStatus);
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+    try {
+        return FfiConverterSequenceString.lift(__rb);
+    } finally {
+        nativeModule().rustbuffer_free(__rb);
+    }
+    }
 
 /**
  * A fresh phone identity from OS randomness, as 64 hex digits. Store it in the
@@ -56,6 +85,17 @@ export function phoneDeviceId(secretHex: string): string /*throws*/ {
     } finally {
         nativeModule().rustbuffer_free(__rb);
     }
+    }
+
+/**
+ * Developer mode: start keeping iroh's log in memory (call before binding to see startup).
+ */
+export function startDeveloperLog(): void {uniffiCaller.rustCall(
+            /*caller:*/ (callStatus) => { nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_func_start_developer_log(
+                callStatus);
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
     }
 
 // Hermes (React Native ≥ 0.74) ships TextEncoder and encodeInto, but not
@@ -913,6 +953,9 @@ const uniffiTypePhoneEndpointObjectFactory: UniffiObjectFactory<PhoneEndpointLik
 }})();
 const FfiConverterTypePhoneEndpoint = new FfiConverterObject(uniffiTypePhoneEndpointObjectFactory);
 
+// FfiConverter for Array<string>
+const FfiConverterSequenceString = new FfiConverterArray(FfiConverterString);
+
 
 /**
  * This should be called before anything else.
@@ -932,11 +975,20 @@ function uniffiEnsureInitialized() {
     if (bindingsContractVersion !== scaffoldingContractVersion) {
         throw new UniffiInternalError.ContractVersionMismatch(scaffoldingContractVersion, bindingsContractVersion);
     }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log() !== 48264) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_func_clear_developer_log");
+    }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_func_developer_log() !== 55914) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_func_developer_log");
+    }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret() !== 56935) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret");
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_func_phone_device_id() !== 31413) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_func_phone_device_id");
+    }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_func_start_developer_log() !== 32460) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_func_start_developer_log");
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_close() !== 34628) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_desktopconnection_close");

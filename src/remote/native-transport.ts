@@ -2,7 +2,14 @@
  * Adapter from the Rust turbo module (`modules/sovra-remote`, Iroh over QUIC) to
  * the app's `PhoneTransport`. Creates the phone's persistent identity on first use.
  */
-import { type DesktopConnectionLike, PhoneEndpoint, TransportError_Tags, generatePhoneSecret } from 'sovra-remote';
+import {
+  type DesktopConnectionLike,
+  PhoneEndpoint,
+  TransportError_Tags,
+  developerLog as nativeDeveloperLog,
+  generatePhoneSecret,
+  startDeveloperLog,
+} from 'sovra-remote';
 
 import type { Reach } from '@/state/preferences';
 import { loadPhoneSecret, savePhoneSecret } from '@/state/storage';
@@ -68,7 +75,19 @@ class NativeConnection implements DesktopConnection {
   }
 }
 
+/** Developer mode: start keeping the transport's own log (iroh's relay, DNS and path events). */
+export function enableDeveloperLog(): void {
+  startDeveloperLog();
+}
+
+/** Developer mode: the transport's recent log lines, oldest first. */
+export function developerLog(): string[] {
+  return nativeDeveloperLog();
+}
+
 export async function createNativeTransport(reach: Reach): Promise<PhoneTransport> {
+  // Always kept, in memory only, so a failure can be explained without Developer mode first.
+  startDeveloperLog();
   const secret = await phoneSecret();
   let endpoint;
   try {

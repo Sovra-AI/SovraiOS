@@ -1,6 +1,6 @@
 import type { ConnectionProgress } from '@/state/remote';
 
-import { describeConnection, diagnosticLines, pairingStatus, routeLabel, showConnectionCard } from '../connection-status';
+import { describeConnection, diagnosticLines, pairingStatus, routeLabel, shortLogLine, showConnectionCard } from '../connection-status';
 
 const at = (patch: Partial<ConnectionProgress>): ConnectionProgress => ({ step: 'reaching', attempt: 1, since: 0, retryAt: null, ...patch });
 
@@ -82,5 +82,19 @@ describe('diagnosticLines', () => {
   it('says plainly when the phone has no relay at all', () => {
     expect(diagnosticLines(JSON.stringify({ relaysEnabled: true, relays: [], direct: [], dns: null }))[0]).toMatch(/none yet/);
     expect(diagnosticLines(null)).toEqual(['No transport report yet.']);
+  });
+});
+
+describe('shortLogLine', () => {
+  it('keeps the time, level, target and message of a transport log line', () => {
+    expect(
+      shortLogLine(
+        '2026-11-13T14:57:55.674598Z DEBUG endpoint{id=7e7e}:relay-actor:active-relay{url=https://aps1-1.relay.n0.iroh.link./}:dialing:connect{addr=[2a01::1]:443}: iroh_relay::client::tls: failed to connect: No route to host',
+      ),
+    ).toBe('14:57:55.674 D client::tls: failed to connect: No route to host');
+    expect(shortLogLine('2026-11-13T14:57:55.402290Z  INFO sovra_remote_ffi: dialling the computer computer=2c28 relays=4')).toBe(
+      '14:57:55.402 I sovra_remote_ffi: dialling the computer computer=2c28 relays=4',
+    );
+    expect(shortLogLine('not a log line')).toBe('not a log line');
   });
 });

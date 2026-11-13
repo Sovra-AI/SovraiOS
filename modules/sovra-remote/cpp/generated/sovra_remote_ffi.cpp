@@ -186,11 +186,17 @@ extern "C" {
     /*handle*/ uint64_t uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(
         /*handle*/ uint64_t ptr
     );
+    void uniffi_sovra_remote_ffi_fn_func_clear_developer_log(RustCallStatus *uniffi_out_err
+    );
+    RustBuffer uniffi_sovra_remote_ffi_fn_func_developer_log(RustCallStatus *uniffi_out_err
+    );
     RustBuffer uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(RustCallStatus *uniffi_out_err
     );
     RustBuffer uniffi_sovra_remote_ffi_fn_func_phone_device_id(
         RustBuffer secret_hex, 
         RustCallStatus *uniffi_out_err
+    );
+    void uniffi_sovra_remote_ffi_fn_func_start_developer_log(RustCallStatus *uniffi_out_err
     );
     RustBuffer ffi_sovra_remote_ffi_rustbuffer_alloc(
         uint64_t size, 
@@ -389,9 +395,15 @@ extern "C" {
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
     );
+    uint16_t uniffi_sovra_remote_ffi_checksum_func_clear_developer_log(
+    );
+    uint16_t uniffi_sovra_remote_ffi_checksum_func_developer_log(
+    );
     uint16_t uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_func_phone_device_id(
+    );
+    uint16_t uniffi_sovra_remote_ffi_checksum_func_start_developer_log(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_method_desktopconnection_close(
     );
@@ -2035,6 +2047,22 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_func_clear_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_func_clear_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_func_clear_developer_log(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_func_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_func_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_func_developer_log(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret"),
@@ -2049,6 +2077,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
         1,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_sovra_remote_ffi_fn_func_phone_device_id(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_func_start_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_func_start_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_func_start_developer_log(rt, thisVal, args, count);
         }
     );
     props["ubrn_ffi_sovra_remote_ffi_rust_future_poll_u8"] = jsi::Function::createFromHostFunction(
@@ -2435,6 +2471,22 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_ffi_sovra_remote_ffi_rust_future_complete_void(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_func_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_func_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_func_developer_log(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret"),
@@ -2449,6 +2501,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
         0,
         [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
             return this->cpp_uniffi_sovra_remote_ffi_checksum_func_phone_device_id(rt, thisVal, args, count);
+        }
+    );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_func_start_developer_log"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_func_start_developer_log"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_func_start_developer_log(rt, thisVal, args, count);
         }
     );
     props["ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_close"] = jsi::Function::createFromHostFunction(
@@ -2869,6 +2929,24 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_method_phoneendp
         
         return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
 }
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_clear_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        uniffi_sovra_remote_ffi_fn_func_clear_developer_log(&status
+        );
+        uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return jsi::Value::undefined();
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_sovra_remote_ffi_fn_func_developer_log(&status
+        );
+        uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::sovra_remote_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
         auto value = uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(&status
@@ -2887,6 +2965,15 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_phone_devic
 
         
         return uniffi::sovra_remote_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_func_start_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        uniffi_sovra_remote_ffi_fn_func_start_developer_log(&status
+        );
+        uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return jsi::Value::undefined();
 }
 jsi::Value NativeSovraRemoteFfi::cpp_ffi_sovra_remote_ffi_rust_future_poll_u8(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         ffi_sovra_remote_ffi_rust_future_poll_u8(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), uniffi::sovra_remote_ffi::Bridging<UniffiRustFutureContinuationCallback>::fromJs(rt, callInvoker, args[1]), uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[2])
@@ -3260,6 +3347,20 @@ jsi::Value NativeSovraRemoteFfi::cpp_ffi_sovra_remote_ffi_rust_future_complete_v
         
         return jsi::Value::undefined();
 }
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_func_clear_developer_log(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_func_developer_log(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret(
         );
@@ -3269,6 +3370,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_gener
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_phone_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_checksum_func_phone_device_id(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_func_start_developer_log(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_func_start_developer_log(
         );
 
         

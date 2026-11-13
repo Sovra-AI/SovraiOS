@@ -71,8 +71,11 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_fn_free_desktopconnection(ptr: bigint, uniffi_out_err: UniffiRustCallStatus): void;
     ubrn_uniffi_sovra_remote_ffi_fn_clone_phoneendpoint(ptr: bigint, uniffi_out_err: UniffiRustCallStatus): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_free_phoneendpoint(ptr: bigint, uniffi_out_err: UniffiRustCallStatus): void;
+    ubrn_uniffi_sovra_remote_ffi_fn_func_clear_developer_log(uniffi_out_err: UniffiRustCallStatus): void;
+    ubrn_uniffi_sovra_remote_ffi_fn_func_developer_log(uniffi_out_err: UniffiRustCallStatus): Uint8Array;
     ubrn_uniffi_sovra_remote_ffi_fn_func_generate_phone_secret(uniffi_out_err: UniffiRustCallStatus): Uint8Array;
     ubrn_uniffi_sovra_remote_ffi_fn_func_phone_device_id(secretHex: Uint8Array, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
+    ubrn_uniffi_sovra_remote_ffi_fn_func_start_developer_log(uniffi_out_err: UniffiRustCallStatus): void;
     ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_close(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): void;
     ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_is_closed(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): number;
     ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_peer(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
@@ -85,8 +88,11 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_diagnostics(uniffiSelf: bigint): bigint;
     ubrn_ffi_sovra_remote_ffi_uniffi_contract_version(): number;
+    ubrn_uniffi_sovra_remote_ffi_checksum_func_clear_developer_log(): number;
+    ubrn_uniffi_sovra_remote_ffi_checksum_func_developer_log(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_func_generate_phone_secret(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_func_phone_device_id(): number;
+    ubrn_uniffi_sovra_remote_ffi_checksum_func_start_developer_log(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_close(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_is_closed(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_peer(): number;
