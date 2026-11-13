@@ -15,4 +15,4 @@ Generated (do not edit): `src/`, `cpp/`, `android/` (except build outputs), `ios
 Keep `iroh` pinned to the version in `SovraHarness/Cargo.toml`.
 
 The `rust/` crate is also the transport for [SovraAndroid](https://github.com/Sovra-AI/SovraAndroid),
-which builds it with its own `scripts/build-rust.sh`. A change here is a change for both apps.
+which builds it with its own [build script](https://github.com/Sovra-AI/SovraAndroid/blob/main/scripts/build-rust.sh). A change here is a change for both apps.
