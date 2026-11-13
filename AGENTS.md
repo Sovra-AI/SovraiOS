@@ -1,7 +1,7 @@
 # SovraiOS — agent rules
 
 Expo / React Native app that remote-controls Sovra Harness on the desktop. The desktop
-contract is canonical: `../SovraHarness/docs/remote-control.md`. Read `docs/architecture.md`
+contract is canonical: [SovraHarness `docs/remote-control.md`](https://github.com/Sovra-AI/SovraHarness/blob/main/docs/remote-control.md). Read `docs/architecture.md`
 before touching `src/remote/` or the Rust module.
 
 ## Expo has changed — do not trust your training data
