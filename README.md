@@ -27,18 +27,17 @@ Pair once by scanning a code shown by [SovraHarness](https://github.com/Sovra-AI
 on your computer. After that, opening the app connects to that computer by itself, on the
 same Wi-Fi or over mobile data, end-to-end encrypted.
 
-> **License:** Source on `main` is available under n8n's Sustainable Use License,
-> which n8n's docs allow other projects to use. This is fair-code:
-> source-available, and not an OSI open-source license. Enterprise files have
-> separate terms. See [License](#license).
+> **License:** Source on `main` is available under Sovra's Sustainable Use License.
+> This is fair-code: source-available, and not an OSI open-source license.
+> Enterprise files have separate terms. See [License](#license).
 
 ## What you can do
 
-- **Chat:** read the conversation as bubbles, write a message that is typed through
-  Sovra's real chat box, and press **Stop**.
+- **Chat:** read the conversation as bubbles with Sovra's formatting, write a message that
+  is typed through Sovra's real chat box, pick `/` skills, and press **Stop**.
 - **Chats:** browse every chat in Sovra's sidebar, search, show older chats, or start a
   new one.
-- **Skills:** type `/` or open the Skills tab to pick one of Sovra's skills.
+- **Skills:** search Sovra's `/` skills; picking one starts a message with it.
 - **Computer:** jump to Sovra's pages, see a live picture of its window or a list of its
   controls, press keyboard keys, and type into any box there.
 
@@ -54,8 +53,9 @@ No App Store or TestFlight build is published yet; [build from source](#build-fr
 1. On your computer, in Sovra: **Skills → Use Sovra from your phone** (or `/remote-control`).
 2. In the app: **Scan the code**, or scan it with the iPhone camera; the `sovra://` link
    opens the app. The code works once and expires after five minutes.
-3. Next time, just open the app. If it says **Start remote control on your computer**, run
-   the skill again: phone access switches off whenever Sovra restarts. Your phone stays paired.
+3. Next time, just open the app. If it says **Turn on phone control** or **Open Sovra on
+   your computer**, run the skill again: phone access switches off whenever Sovra restarts.
+   Your phone stays paired.
 
 To revoke a phone, choose **Forget** for it in Sovra on your computer. **Settings → Forget
 this computer** on the phone only removes the computer from the phone.
@@ -92,8 +92,9 @@ the [documentation](docs/README.md) for current behavior.
 - The phone key lives in the iOS Keychain on this device only, excluded from backups.
 - The app works only while it is open on screen. It cannot wake a closed app or a sleeping
   computer, and there are no push notifications.
-- Reading replies uses desktop screenshots where the desktop can capture them; otherwise
-  only labelled text is shown.
+- Replies are read from the labels Sovra gives each message, so they show as text with
+  Sovra's formatting. Desktops without those labels fall back to a picture of the
+  conversation where they can capture one.
 
 See [Security](SECURITY.md) for reporting and the
 [desktop phone-control contract](https://github.com/Sovra-AI/SovraHarness/blob/main/docs/remote-control.md)
@@ -152,7 +153,7 @@ public issues.
 
 ## License
 
-[LICENSE](LICENSE) contains n8n's Sustainable Use License, Version 1.0, with Sovra as the
+[LICENSE](LICENSE) is Sovra's Sustainable Use License, Version 1.0, with Sovra as the
 licensor. This is a fair-code license with use and distribution restrictions, not an OSI
 open-source license. It applies to source on `main`; the license excludes other branches.
 Files with `.ee.` in their name or `.ee` in their directory name are covered separately by

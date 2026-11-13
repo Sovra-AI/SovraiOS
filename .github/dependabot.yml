@@ -1,0 +1,56 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "⬆️"
+      include: scope
+    labels:
+      - dependencies
+      - skip-changelog
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "⬆️"
+      include: scope
+    labels:
+      - dependencies
+    ignore:
+      # Expo pins SDK-compatible versions; upgrade with `npx expo install --fix` per SDK release.
+      - dependency-name: "expo*"
+      - dependency-name: "react"
+      - dependency-name: "react-native*"
+      - dependency-name: "@expo/*"
+
+  - package-ecosystem: cargo
+    directory: /modules/sovra-remote/rust
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      rust-patches:
+        patterns: ["*"]
+        update-types: [patch]
+    commit-message:
+      prefix: "⬆️"
+      include: scope
+    labels:
+      - dependencies
+    ignore:
+      # Pinned exactly: iroh to the desktop's version, uniffi to ubrn's, libc for iOS (netdev).
+      - dependency-name: iroh
+      - dependency-name: uniffi
+      - dependency-name: libc
