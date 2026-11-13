@@ -12,7 +12,7 @@ and desktop look like one product:
 | `tokens.rs` `ChatTokens` (composer, send, stop, user bubble) | `composer*`, `send*`, `stopBackground`, `userBubble` |
 | `button_primary` 102° violet → `#5566e6` gradient | `primaryGradient` (native CSS `backgroundImage`) |
 | Text roles 36/28/16/14/12 | `type.display/pageTitle/sectionTitle/body/caption` |
-| `assets/branding/sovra-logo.svg` | `assets/images/sovra-logo.svg` (byte-identical, rendered with `expo-image`) |
+| `crates/sovra-ui/assets/branding/sovra-logo.svg` | `assets/images/sovra-logo.svg` (byte-identical, rendered with `expo-image`) |
 
 ## Mobile adaptations
 
@@ -33,5 +33,5 @@ App icons are rendered from the same SVG (silhouette + its own radial gradient
   instead of local styles.
 - Keep both themes readable: text uses `text` / `secondaryText` / `mutedText`, accents use
   `link` (contrast-tested on the desktop), fills use `primary`.
-- When the desktop palette changes, update `tokens.ts` in the same week and note the
-  desktop revision in the commit.
+- When the desktop palette changes, update `tokens.ts` (and SovraAndroid's `ui/Theme.kt`) to
+  match, and note the desktop commit in the commit message.
