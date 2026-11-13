@@ -16,10 +16,18 @@ const KINDS: Record<TransportError_Tags, TransportFailureKind> = {
   [TransportError_Tags.Closed]: 'closed',
 };
 
+/** Plain words for failures that carry no message of their own (the Android app says the same). */
+const PLAIN: Partial<Record<TransportFailureKind, string>> = {
+  timeout: 'Your computer took too long to answer.',
+  closed: 'The connection closed.',
+};
+
 function translate(error: unknown): TransportFailure {
   const tag = (error as { tag?: TransportError_Tags } | null)?.tag;
   const kind = (tag && KINDS[tag]) || 'unreachable';
-  const message = error instanceof Error && error.message ? error.message : 'Your computer is not reachable right now.';
+  const inner = (error as { inner?: { message?: unknown } } | null)?.inner?.message;
+  // uniffi's own text ("TransportError.Timeout") is not for people.
+  const message = typeof inner === 'string' && inner ? inner : (PLAIN[kind] ?? 'Your computer is not reachable right now.');
   return new TransportFailure(kind, message);
 }
 

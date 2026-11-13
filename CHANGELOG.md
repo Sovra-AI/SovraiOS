@@ -10,10 +10,11 @@ Add entries under **Unreleased** as part of the change that introduces them.
 
 ### Added
 
-- **Fair-code license and public repository files.** Source is under n8n's Sustainable
-  Use License with Sovra as the licensor, the same as SovraHarness, with a Code of
+- **Fair-code license and public repository files.** Source is under Sovra's Sustainable
+  Use License, word for word the same as SovraHarness, with a Code of
   Conduct, security policy, contributing guide, issue and pull request templates, and a
-  documentation index and maintenance guide in the shared Sovra style.
+  documentation index and maintenance guide in the shared Sovra style. Dependabot keeps
+  GitHub Actions, npm (outside the Expo SDK pins) and Rust patch releases current.
 - Expo SDK 58 / React Native 0.88 app (New Architecture, React Compiler, Expo Router typed routes).
 - Pair with Sovra Harness by scanning its QR code, opening its `sovra://remote-control` link, or pasting it.
 - Automatic reconnect to the paired computer on open, over Wi-Fi or mobile data (Iroh relay fallback).
@@ -59,6 +60,9 @@ Add entries under **Unreleased** as part of the change that introduces them.
 
 ### Fixed
 
+- When the computer can't be reached, the detail under **Open Sovra on your computer** says
+  "Your computer took too long to answer." instead of an internal name such as
+  `TransportError.Timeout`, matching SovraAndroid.
 - `/` skills did nothing from the phone: a lone `/table` only completed the name on the
   computer, and Sovra's "Usage: …" reply was invisible to the phone, which cleared the message.
 - The Chats tab only listed the two or three chats on screen on the computer, and could
