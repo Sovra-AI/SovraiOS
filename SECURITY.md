@@ -54,8 +54,8 @@ policy.
 
 The app controls the Sovra window on the paired computer only: it inspects its
 controls, presses them, types, and reads the text Sovra labels (messages and
-controls), plus screenshots where the desktop provides them. It has no access to the computer's operating system, files, or shell beyond
-what Sovra's own window allows.
+controls), plus screenshots where the desktop provides them. It has no access to the
+computer's operating system, files, or shell beyond what Sovra's own window allows.
 
 Traffic uses Iroh QUIC with the desktop's key pinned, directly or through Iroh's
 encrypted relays and address lookup, which see connection metadata but not

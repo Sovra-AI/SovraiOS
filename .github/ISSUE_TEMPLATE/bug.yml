@@ -30,7 +30,7 @@ body:
     id: device
     attributes:
       label: Device and iOS version
-      description: For example, the phone model or emulator and its OS version.
+      description: For example, the iPhone model or simulator and its iOS version.
     validations:
       required: true
   - type: input

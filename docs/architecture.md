@@ -86,14 +86,21 @@ default; it needs the Internet) dials a desktop by key with LAN sockets disabled
 To check this without leaving the building, firewall an Android emulator (`adb root`) so it
 behaves like a strict network: drop all UDP except the emulator's DNS at `10.0.2.3`, drop
 private ranges and your own public IP (no LAN or hairpin path), and drop 1.1.1.1, 8.8.8.8 and
-9.9.9.9 (third-party DNS blocked). On 2026-11-13 the current build connected under those rules
-and showed "Connected through an encrypted relay"; the build before `OsFirstResolver` sent over
-11,000 packets to the blocked resolvers and stayed on "Can't reach your computer".
+9.9.9.9 (third-party DNS blocked). Under those rules a build with `OsFirstResolver` connects
+and shows "Connected through an encrypted relay"; a build without it sent over 11,000 packets
+to the blocked resolvers and stayed on "Can't reach your computer".
 
 **Settings → Advanced → Encrypted relay only** binds the endpoint with no direct sockets
 (`PhoneEndpoint::bind_relay_only`), so a phone on any network can check the path a strict
 network forces. The transport also sends a QUIC keep-alive every 10 s, inside the idle limit of
 carrier NATs, so a direct path survives a slow refresh.
+
+**Changing networks.** A failed try tells the endpoint the network may have changed, and the
+app binds a fresh endpoint before the next try, so moving from Wi-Fi to mobile data recovers
+without reopening the app. The failure then says which half failed: this network reaching the
+encrypted relay, or the computer not answering through it (`PhoneEndpoint::explain_failure`,
+which waits up to 3 s for a relay). **Settings → Advanced → Developer mode** shows each try,
+the relay in use and a DNS check on the remote screen, with a button to copy them.
 
 ## Connection progress
 
