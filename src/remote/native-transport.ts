@@ -6,7 +6,7 @@ import { type DesktopConnectionLike, PhoneEndpoint, TransportError_Tags, generat
 
 import { loadPhoneSecret, savePhoneSecret } from '@/state/storage';
 
-import { type DesktopConnection, type PhoneTransport, TransportFailure, type TransportFailureKind } from './transport';
+import { type DesktopConnection, type PhoneTransport, type Route, TransportFailure, type TransportFailureKind } from './transport';
 
 const KINDS: Record<TransportError_Tags, TransportFailureKind> = {
   [TransportError_Tags.InvalidAddress]: 'invalid_address',
@@ -47,6 +47,10 @@ class NativeConnection implements DesktopConnection {
   constructor(private readonly inner: DesktopConnectionLike) {}
   peer() {
     return this.inner.peer();
+  }
+  route(): Route {
+    const route = this.inner.route();
+    return route === 'direct' || route === 'relay' ? route : 'unknown';
   }
   isClosed() {
     return this.inner.isClosed();

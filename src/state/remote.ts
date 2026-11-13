@@ -11,7 +11,7 @@ import { sendChatMessage, stopWork } from '@/remote/chat';
 import { type ClientErrorCode, type Intent, type Outcome, RemoteClient } from '@/remote/client';
 import { type Skill, loadSkills } from '@/remote/skills';
 import { decodeTicket } from '@/remote/ticket';
-import type { PhoneTransport } from '@/remote/transport';
+import type { PhoneTransport, Route } from '@/remote/transport';
 import type { InspectResult } from '@/remote/wire';
 
 import { usePreferences } from './preferences';
@@ -33,6 +33,18 @@ export interface Notice {
   text: string;
 }
 
+/** What the phone is doing to reach the computer while it is not connected. */
+export interface ConnectionProgress {
+  /** `starting`: binding the phone's secure endpoint. `reaching`: dialling the computer and saying Hello. `waiting`: the last try failed; another is scheduled. */
+  step: 'starting' | 'reaching' | 'waiting';
+  /** 1 for the first try since the screen opened or the last success. */
+  attempt: number;
+  /** When this run of tries began (ms since epoch). */
+  since: number;
+  /** When the next try starts, while `waiting`. */
+  retryAt: number | null;
+}
+
 export type TransportFactory = (localOnly: boolean) => Promise<PhoneTransport>;
 
 interface RemoteState {
@@ -47,6 +59,10 @@ interface RemoteState {
   working: boolean;
   /** Sovra's `/` skills, read once from the computer (null until loaded). */
   skills: Skill[] | null;
+  /** Live progress while connecting or retrying; null once connected. */
+  progress: ConnectionProgress | null;
+  /** How the connection reaches the computer, while connected. */
+  route: Route | null;
 
   init(factory: TransportFactory): Promise<void>;
   pair(link: string, phoneName: string, desktopName: string): Promise<Outcome<null>>;
@@ -64,6 +80,8 @@ interface RemoteState {
   fetchSkills(force?: boolean): Promise<boolean>;
   forget(): Promise<void>;
   dismissNotice(): void;
+  /** Skip the wait and try to connect now. */
+  retryNow(): void;
 }
 
 let factory: TransportFactory | null = null;
@@ -113,6 +131,27 @@ function schedule(delay: number) {
   timer = live ? setTimeout(() => void useRemote.getState().refresh(), delay) : null;
 }
 
+/** Record a step of the current connection attempt (a no-op once connected). */
+function reaching(step: ConnectionProgress['step'], set: (patch: Partial<RemoteState>) => void, get: () => RemoteState) {
+  const { progress } = get();
+  if (!progress) {
+    set({ progress: { step, attempt: 1, since: Date.now(), retryAt: null } });
+    return;
+  }
+  // A new try after a wait counts as the next attempt.
+  const attempt = progress.step === 'waiting' && step !== 'waiting' ? progress.attempt + 1 : progress.attempt;
+  set({ progress: { ...progress, step, attempt, retryAt: null } });
+}
+
+/** The try failed: wait, then try again (unless the person must act first). */
+function retryLater(set: (patch: Partial<RemoteState>) => void, get: () => RemoteState) {
+  const delay = backoff.next();
+  reaching('waiting', set, get);
+  const { progress } = get();
+  if (progress) set({ progress: { ...progress, retryAt: Date.now() + delay } });
+  schedule(delay);
+}
+
 export const useRemote = create<RemoteState>((set, get) => ({
   phase: 'loading',
   desktop: null,
@@ -123,6 +162,8 @@ export const useRemote = create<RemoteState>((set, get) => ({
   notice: null,
   working: false,
   skills: null,
+  progress: null,
+  route: null,
 
   async init(next) {
     factory = next;
@@ -170,15 +211,18 @@ export const useRemote = create<RemoteState>((set, get) => ({
 
   async refresh() {
     if (!get().desktop) return;
+    const reconnecting = !client?.connected;
+    if (reconnecting) reaching(client ? 'reaching' : 'starting', set, get);
     let remote: RemoteClient | null;
     try {
       remote = await ensureClient();
     } catch (error) {
-      set({ phase: 'unreachable', detail: String(error) });
-      schedule(backoff.next());
+      set({ phase: 'unreachable', detail: error instanceof Error ? error.message : String(error) });
+      retryLater(set, get);
       return;
     }
     if (!remote) return;
+    if (reconnecting) reaching('reaching', set, get);
     const view = await remote.inspect();
     if (view.ok) {
       backoff.reset();
@@ -188,20 +232,25 @@ export const useRemote = create<RemoteState>((set, get) => ({
         const shot = await remote.screenshot();
         screenshot = shot.ok ? shot.value : null;
       }
-      set({ phase: 'connected', snapshot: view.value, screenshot, updatedAt: Date.now(), detail: null });
+      set({ phase: 'connected', snapshot: view.value, screenshot, updatedAt: Date.now(), detail: null, progress: null, route: remote.route });
       schedule(usePreferences.getState().refreshMs);
       return;
     }
     const phase = phaseFor(view.code);
-    set({ phase: phase === 'connected' ? get().phase : phase, detail: view.message });
-    if (phase === 'revoked' || phase === 'incompatible') return; // needs the person, not a retry
-    schedule(backoff.next());
+    set({ phase: phase === 'connected' ? get().phase : phase, detail: view.message, route: remote.route });
+    if (phase === 'revoked' || phase === 'incompatible') {
+      set({ progress: null });
+      return; // needs the person, not a retry
+    }
+    retryLater(set, get);
   },
 
   startLive() {
     if (live) return;
     live = true;
     backoff.reset();
+    // The old session ended when the screen was left: say so until a new one answers.
+    set({ progress: null, ...(get().phase === 'connected' ? { phase: 'connecting' as const } : {}) });
     void get().refresh();
   },
 
@@ -211,6 +260,7 @@ export const useRemote = create<RemoteState>((set, get) => ({
     timer = null;
     // Leaving the foreground closes the endpoint: no background traffic.
     void resetClient();
+    set({ progress: null, route: null });
   },
 
   setPictureWanted(wanted) {
@@ -295,11 +345,25 @@ export const useRemote = create<RemoteState>((set, get) => ({
       screenshot: null,
       detail: null,
       skills: null,
+      progress: null,
+      route: null,
       notice: { tone: 'info', text: 'Forgotten on this phone. Also choose Forget on your computer to revoke access there.' },
     });
   },
 
   dismissNotice() {
     set({ notice: null });
+  },
+
+  retryNow() {
+    if (!live) {
+      get().startLive();
+      return;
+    }
+    if (get().progress?.step !== 'waiting') return; // a try is already running
+    backoff.reset();
+    if (timer) clearTimeout(timer);
+    timer = null;
+    void get().refresh();
   },
 }));

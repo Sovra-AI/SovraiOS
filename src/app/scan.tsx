@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { Linking, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { usePairingStatus } from '@/components/connection-card';
 import { Button, NoticeBanner, Surface, Text } from '@/components/ui';
 import { usePairingDraft } from '@/state/pairing';
 import { useRemote } from '@/state/remote';
@@ -15,6 +16,8 @@ export default function Scan() {
   const [permission, requestPermission] = useCameraPermissions();
   const [status, setStatus] = useState<{ tone: 'info' | 'danger'; text: string } | null>(null);
   const handling = useRef(false);
+  const [pairingNow, setPairingNow] = useState(false);
+  const pairing = usePairingStatus(pairingNow);
 
   const onScan = async ({ data }: BarcodeScanningResult) => {
     if (handling.current) return;
@@ -24,9 +27,11 @@ export default function Scan() {
     }
     handling.current = true;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    setStatus({ tone: 'info', text: 'Connecting securely to your computer…' });
+    setStatus(null);
+    setPairingNow(true);
     const { phoneName, desktopName } = usePairingDraft.getState();
     const result = await useRemote.getState().pair(data, phoneName, desktopName);
+    setPairingNow(false);
     if (result.ok) {
       router.dismissAll();
       router.replace('/remote');
@@ -69,7 +74,13 @@ export default function Scan() {
       />
       <SafeAreaView style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: theme.space.large, gap: theme.space.small + 4 }}>
         <View style={{ alignSelf: 'center', width: theme.layout.scanCode, height: theme.layout.scanCode, borderRadius: theme.radius.panel, borderWidth: 3, borderColor: theme.colors.ring, marginBottom: theme.space.extra }} />
-        {status ? <NoticeBanner tone={status.tone} text={status.text} /> : <NoticeBanner tone="info" text="Point your camera at the code on your computer." />}
+        {pairing ? (
+          <NoticeBanner tone="info" text={pairing} />
+        ) : status ? (
+          <NoticeBanner tone={status.tone} text={status.text} />
+        ) : (
+          <NoticeBanner tone="info" text="Point your camera at the code on your computer." />
+        )}
         <Button label="Cancel" variant="secondary" onPress={() => router.back()} />
       </SafeAreaView>
     </View>

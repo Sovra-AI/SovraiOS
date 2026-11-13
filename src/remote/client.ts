@@ -13,7 +13,7 @@
  * - All calls are serialized: one request in flight per connection.
  */
 import type { PairingTicket } from './ticket';
-import { type DesktopConnection, type PhoneTransport, TransportFailure } from './transport';
+import { type DesktopConnection, type PhoneTransport, type Route, TransportFailure } from './transport';
 import {
   type ErrorCode,
   type Hex32,
@@ -107,6 +107,12 @@ export class RemoteClient {
 
   get connected(): boolean {
     return this.session !== null && !this.session.connection.isClosed();
+  }
+
+  /** How the current session reaches the desktop, or null when not connected. */
+  get route(): Route | null {
+    if (!this.connected) return null;
+    return this.session?.connection.route?.() ?? 'unknown';
   }
 
   /** Serialize every call so sequence numbers and revisions never interleave. */

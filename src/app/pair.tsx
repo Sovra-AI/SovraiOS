@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { usePairingStatus } from '@/components/connection-card';
 import { Button, Field, Logo, NoticeBanner, Surface, Text, inputStyle } from '@/components/ui';
 import { usePairingDraft } from '@/state/pairing';
 import { useRemote } from '@/state/remote';
@@ -25,6 +26,7 @@ export default function Pair() {
   const [naming, setNaming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pairing = usePairingStatus(busy);
 
   const pasteLink = async () => {
     setError(null);
@@ -85,6 +87,7 @@ export default function Pair() {
           </Surface>
 
           {error ? <NoticeBanner tone="danger" text={error} /> : null}
+          {pairing ? <NoticeBanner tone="info" text={pairing} /> : null}
 
           <View style={{ gap: theme.space.small + 4 }}>
             <Button label="Scan the code" variant="primary" onPress={() => router.push('/scan')} disabled={busy} />

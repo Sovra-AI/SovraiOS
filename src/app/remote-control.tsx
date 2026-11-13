@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { usePairingStatus } from '@/components/connection-card';
 import { Button, NoticeBanner, Text } from '@/components/ui';
 import { usePairingDraft } from '@/state/pairing';
 import { useRemote } from '@/state/remote';
@@ -17,6 +18,7 @@ export default function RemoteControlLink() {
   const [failure, setFailure] = useState<string | null>(null);
   const started = useRef(false);
   const error = typeof ticket === 'string' ? failure : 'This link is incomplete. Scan the code on your computer again.';
+  const pairing = usePairingStatus(!error);
 
   useEffect(() => {
     if (started.current) return;
@@ -43,8 +45,8 @@ export default function RemoteControlLink() {
       ) : (
         <>
           <ActivityIndicator color={theme.colors.ring} />
-          <Text tone="secondary" style={{ textAlign: 'center' }}>
-            Pairing securely with your computer…
+          <Text tone="secondary" accessibilityLiveRegion="polite" style={{ textAlign: 'center' }}>
+            {pairing}
           </Text>
         </>
       )}

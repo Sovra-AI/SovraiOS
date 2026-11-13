@@ -58,6 +58,40 @@ flowchart LR
   Corrupt saved data fails closed (treated as unpaired).
 - Pair retries send Hello first, so a lost `paired` reply never needs a new QR.
 
+## Reaching the computer from any network
+
+The transport is Iroh QUIC with TLS 1.3 and raw public keys: the phone pins the desktop key
+from the pairing code, and the desktop allows only phones it paired. On the same network the
+phone dials the desktop's LAN addresses directly. Elsewhere it looks the desktop up by key at
+`dns.iroh.link` (over HTTPS) and connects through the desktop's encrypted Iroh relay, which
+works over TCP 443 where UDP is blocked; Iroh then tries to punch a direct path and moves
+the connection onto it. Relays see which keys talk and how much, never the content.
+
+- **DNS comes from the phone's own resolver.** Iroh normally reads nameservers itself:
+  through SystemConfiguration on Apple, which the iOS sandbox hides, and through JNI on
+  Android, which needs a context this app never installs. It then falls back to fixed public
+  resolvers that many mobile, IPv6-only and corporate networks block, so relay hostnames
+  never resolved and only the LAN addresses in the pairing code worked. `OsFirstResolver` in
+  the transport asks `getaddrinfo` first. That honours the network's DNS, DNS64/NAT64, VPNs
+  and Private DNS. TXT lookups and OS failures still go to Iroh's resolver.
+- **The pairing code carries the relay.** SovraHarness waits up to three seconds for its
+  relay before encoding the code. Older desktops encode LAN addresses only; the phone still
+  finds them by key.
+- **The path is shown.** `DesktopConnection.route()` reports `direct` or `relay`, and the status
+  line says "Connected directly" or "Connected through an encrypted relay".
+
+`phone_reaches_desktop_by_key_alone_through_a_relay` in the transport tests (ignored by
+default; it needs the Internet) dials a desktop by key with LAN sockets disabled.
+
+## Connection progress
+
+While it is not connected, the remote screen shows each step (secure endpoint ready, reaching
+the computer), how long it has been trying, the attempt number, the last failure and a
+countdown to the next try with **Try now**. From the third attempt it lists what to check on
+the computer. A reconnect that finishes within 1.5 s shows only "Connecting…" in the status
+line, so coming back to the app does not flash the card. Pairing shows a ticking elapsed time.
+The wording lives in one pure function (`src/components/connection-status.ts`), with the same tests in both apps.
+
 ## Chat on the phone
 
 The remote screen has four tabs: **Chat**, **Chats**, **Skills** and **Computer**.

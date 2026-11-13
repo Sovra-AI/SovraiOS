@@ -13,10 +13,15 @@ export class TransportFailure extends Error {
   }
 }
 
+/** How traffic reaches the desktop: on the same network (or a punched hole), or through an encrypted Iroh relay. */
+export type Route = 'direct' | 'relay' | 'unknown';
+
 /** One authenticated QUIC connection to the desktop (one JSON message per stream). */
 export interface DesktopConnection {
   /** Desktop public key from the completed TLS handshake. */
   peer(): string;
+  /** The path in use right now; it can change while connected (relay first, then direct). */
+  route?(): Route;
   isClosed(): boolean;
   request(json: string): Promise<string>;
   close(): void;

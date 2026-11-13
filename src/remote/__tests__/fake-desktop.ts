@@ -3,7 +3,7 @@
  * pairing allowlist, Hello sessions, exact sequences consumed even on error,
  * revisions required for mutations, and an idle-closed connection.
  */
-import { type DesktopConnection, type PhoneTransport, TransportFailure } from '../transport';
+import { type DesktopConnection, type PhoneTransport, type Route, TransportFailure } from '../transport';
 import type { InspectResult, PeerAddress, RemoteRequest, UiElement } from '../wire';
 
 export const DESKTOP = '01'.repeat(32);
@@ -39,6 +39,8 @@ export class FakeDesktop {
   dropReplyFor: string | null = null;
   unreachable = false;
   connections: FakeConnection[] = [];
+  /** The path new connections report (see `DesktopConnection.route`). */
+  route: Route = 'direct';
   /** Lets a test change the window in response to delivered input (e.g. navigation). */
   onDeliver: ((input: Delivered) => void) | null = null;
 
@@ -92,6 +94,10 @@ class FakeConnection implements DesktopConnection {
 
   peer() {
     return DESKTOP;
+  }
+
+  route() {
+    return this.desktop.route;
   }
 
   isClosed() {

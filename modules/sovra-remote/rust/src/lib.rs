@@ -7,10 +7,18 @@
 //!
 //! Mirrors `SovraHarness/crates/sovra-mesh/src/remote.rs`.
 
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{
+    future::Future,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    pin::Pin,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 
 use iroh::{
     Endpoint, EndpointAddr, PublicKey, RelayUrl, SecretKey, TransportAddr,
+    dns::{BoxIter, DnsError, DnsResolver, Resolver, TxtRecordData},
     endpoint::{self, presets},
 };
 use serde::Deserialize;
@@ -50,6 +58,116 @@ fn unreachable(error: impl std::fmt::Display) -> TransportError {
 fn protocol(message: &str) -> TransportError {
     TransportError::Protocol {
         message: message.into(),
+    }
+}
+
+/// How long iroh's own resolver may take when the OS resolver has no answer.
+const DNS_FALLBACK_TIMEOUT: Duration = Duration::from_secs(3);
+
+type DnsFuture<T> = Pin<Box<dyn Future<Output = Result<BoxIter<T>, DnsError>> + Send>>;
+
+/// Host names (relays, `dns.iroh.link`) resolved by the phone's own OS resolver first.
+///
+/// iroh reads nameservers itself: SystemConfiguration on Apple (not readable from the
+/// iOS sandbox) and JNI on Android (needs a context this module never installs), then
+/// falls back to fixed public resolvers that many mobile, IPv6-only and corporate networks
+/// block. The OS resolver (`getaddrinfo`) honours the network's DNS, DNS64/NAT64, VPNs and
+/// Private DNS. Without it, only the LAN addresses in the pairing code work, so the phone
+/// connects at home but not on mobile data. TXT records and OS failures still go to
+/// iroh's resolver.
+#[derive(Debug, Clone)]
+struct OsFirstResolver {
+    fallback: DnsResolver,
+}
+
+impl OsFirstResolver {
+    fn new() -> Self {
+        Self {
+            fallback: DnsResolver::new(),
+        }
+    }
+
+    async fn os_lookup(host: &str) -> Vec<IpAddr> {
+        let host = host.trim_end_matches('.');
+        match tokio::net::lookup_host((host, 0)).await {
+            Ok(addrs) => addrs.map(|addr| addr.ip()).collect(),
+            Err(_) => Vec::new(),
+        }
+    }
+}
+
+impl Resolver for OsFirstResolver {
+    fn lookup_ipv4(&self, host: String) -> DnsFuture<Ipv4Addr> {
+        let fallback = self.fallback.clone();
+        Box::pin(async move {
+            let found: Vec<Ipv4Addr> = Self::os_lookup(&host)
+                .await
+                .into_iter()
+                .filter_map(|ip| match ip {
+                    IpAddr::V4(ip) => Some(ip),
+                    IpAddr::V6(ip) => ip.to_ipv4_mapped(),
+                })
+                .collect();
+            if !found.is_empty() {
+                return Ok(Box::new(found.into_iter()) as BoxIter<Ipv4Addr>);
+            }
+            let addrs: Vec<Ipv4Addr> = fallback
+                .lookup_ipv4(host, DNS_FALLBACK_TIMEOUT)
+                .await?
+                .filter_map(|ip| match ip {
+                    IpAddr::V4(ip) => Some(ip),
+                    IpAddr::V6(_) => None,
+                })
+                .collect();
+            Ok(Box::new(addrs.into_iter()) as BoxIter<Ipv4Addr>)
+        })
+    }
+
+    fn lookup_ipv6(&self, host: String) -> DnsFuture<Ipv6Addr> {
+        let fallback = self.fallback.clone();
+        Box::pin(async move {
+            let found: Vec<Ipv6Addr> = Self::os_lookup(&host)
+                .await
+                .into_iter()
+                .filter_map(|ip| match ip {
+                    // A mapped address is IPv4 in disguise; the IPv4 lookup reports it.
+                    IpAddr::V6(ip) if ip.to_ipv4_mapped().is_none() => Some(ip),
+                    _ => None,
+                })
+                .collect();
+            if !found.is_empty() {
+                return Ok(Box::new(found.into_iter()) as BoxIter<Ipv6Addr>);
+            }
+            let addrs: Vec<Ipv6Addr> = fallback
+                .lookup_ipv6(host, DNS_FALLBACK_TIMEOUT)
+                .await?
+                .filter_map(|ip| match ip {
+                    IpAddr::V6(ip) => Some(ip),
+                    IpAddr::V4(_) => None,
+                })
+                .collect();
+            Ok(Box::new(addrs.into_iter()) as BoxIter<Ipv6Addr>)
+        })
+    }
+
+    fn lookup_txt(&self, host: String) -> DnsFuture<TxtRecordData> {
+        let fallback = self.fallback.clone();
+        Box::pin(async move {
+            let records: Vec<TxtRecordData> = fallback
+                .lookup_txt(host, DNS_FALLBACK_TIMEOUT)
+                .await?
+                .collect();
+            Ok(Box::new(records.into_iter()) as BoxIter<TxtRecordData>)
+        })
+    }
+
+    fn clear_cache(&self) {
+        self.fallback.clear_cache();
+    }
+
+    fn reset(&self) -> Box<dyn Resolver> {
+        // Network changed: the OS resolver follows on its own; rebuild iroh's.
+        Box::new(Self::new())
     }
 }
 
@@ -135,7 +253,7 @@ impl PhoneEndpoint {
         let builder = if local_only {
             Endpoint::builder(presets::Minimal)
         } else {
-            Endpoint::builder(presets::N0)
+            Endpoint::builder(presets::N0).dns_resolver(DnsResolver::custom(OsFirstResolver::new()))
         };
         let endpoint = builder
             .secret_key(secret)
@@ -159,16 +277,16 @@ impl PhoneEndpoint {
     ) -> Result<Arc<DesktopConnection>, TransportError> {
         let target = target(&address_json)?;
         let expected = target.id;
-        let connection = tokio::time::timeout(
-            CONNECT_TIMEOUT,
-            self.endpoint.connect(target, REMOTE_ALPN),
-        )
-        .await
-        .map_err(|_| TransportError::Timeout)?
-        .map_err(unreachable)?;
+        let connection =
+            tokio::time::timeout(CONNECT_TIMEOUT, self.endpoint.connect(target, REMOTE_ALPN))
+                .await
+                .map_err(|_| TransportError::Timeout)?
+                .map_err(unreachable)?;
         if connection.alpn() != REMOTE_ALPN || connection.remote_id() != expected {
             connection.close(0u32.into(), b"unexpected peer");
-            return Err(protocol("The computer answered with the wrong identity or protocol."));
+            return Err(protocol(
+                "The computer answered with the wrong identity or protocol.",
+            ));
         }
         Ok(Arc::new(DesktopConnection { connection }))
     }
@@ -196,6 +314,18 @@ impl DesktopConnection {
     /// Desktop public key from the completed handshake.
     pub fn peer(&self) -> String {
         to_hex(self.connection.remote_id().as_bytes())
+    }
+
+    /// How traffic reaches the desktop right now: `"direct"` (same network or a punched
+    /// hole), `"relay"` (encrypted, through an Iroh relay), or `"unknown"`.
+    pub fn route(&self) -> String {
+        let paths = self.connection.paths();
+        let selected = paths.iter().find(|path| path.is_selected());
+        match selected {
+            Some(path) if path.is_ip() => "direct".into(),
+            Some(path) if path.is_relay() => "relay".into(),
+            _ => "unknown".into(),
+        }
     }
 
     /// True once the connection has closed for any reason (idle timeout, stop, revoke).
@@ -261,5 +391,68 @@ mod tests {
         assert!(target(r#"{"device":"00","relay":null,"addrs":[]}"#).is_err());
         let spoof = format!(r#"{{"device":"{device}","relay":null,"addrs":[],"extra":1}}"#);
         assert!(target(&spoof).is_err());
+    }
+
+    #[tokio::test]
+    async fn os_resolver_answers_from_the_system_without_public_dns() {
+        let resolver = OsFirstResolver::new();
+        let v4: Vec<_> = resolver
+            .lookup_ipv4("localhost".into())
+            .await
+            .unwrap()
+            .collect();
+        assert!(v4.contains(&Ipv4Addr::LOCALHOST), "{v4:?}");
+        // A trailing root dot (iroh's relay URLs end in one) still resolves.
+        let dotted: Vec<_> = resolver
+            .lookup_ipv4("localhost.".into())
+            .await
+            .unwrap()
+            .collect();
+        assert!(dotted.contains(&Ipv4Addr::LOCALHOST), "{dotted:?}");
+    }
+
+    /// The mobile-data case: no LAN path, only the desktop's key from the pairing code.
+    #[tokio::test]
+    #[ignore = "needs the Internet (n0 relays and dns.iroh.link); run explicitly"]
+    async fn phone_reaches_desktop_by_key_alone_through_a_relay() {
+        let desktop = Endpoint::builder(presets::N0)
+            .alpns(vec![REMOTE_ALPN.to_vec()])
+            .bind()
+            .await
+            .unwrap();
+        desktop.online().await;
+        let accept = {
+            let desktop = desktop.clone();
+            tokio::spawn(async move {
+                let connection = desktop.accept().await.unwrap().await.unwrap();
+                let (mut send, mut recv) = connection.accept_bi().await.unwrap();
+                let request = recv.read_to_end(MAX_REQUEST_BYTES).await.unwrap();
+                send.write_all(&request).await.unwrap();
+                send.finish().unwrap();
+                connection.closed().await;
+            })
+        };
+        let phone = Endpoint::builder(presets::N0)
+            .dns_resolver(DnsResolver::custom(OsFirstResolver::new()))
+            .clear_ip_transports()
+            .alpns(Vec::new())
+            .bind()
+            .await
+            .unwrap();
+        let phone = PhoneEndpoint { endpoint: phone };
+        let key_only = format!(
+            r#"{{"device":"{}","relay":null,"addrs":[]}}"#,
+            to_hex(desktop.id().as_bytes())
+        );
+        let connection = phone.connect(key_only).await.unwrap();
+        assert_eq!(
+            connection.request(r#"{"echo":1}"#.into()).await.unwrap(),
+            r#"{"echo":1}"#
+        );
+        assert_eq!(connection.route(), "relay");
+        connection.close();
+        phone.close().await;
+        accept.abort();
+        desktop.close().await;
     }
 }

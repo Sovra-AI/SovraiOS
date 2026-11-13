@@ -409,6 +409,11 @@ export interface DesktopConnectionLike {
  * Send one JSON `RemoteRequest`, return the JSON `RemoteResponse`.
  */
     request(requestJson: string, asyncOpts_?: { signal: AbortSignal }) /*throws*/: Promise<string>;
+/**
+ * How traffic reaches the desktop right now: `"direct"` (same network or a punched
+ * hole), `"relay"` (encrypted, through an Iroh relay), or `"unknown"`.
+ */
+    route(): string;
 }
 /**
  * @deprecated Use `DesktopConnectionLike` instead.
@@ -516,6 +521,26 @@ private constructor(pointer: UniffiHandle) {
             __error.stack = __stack;
         }
         throw __error;
+    }
+    }
+    
+/**
+ * How traffic reaches the desktop right now: `"direct"` (same network or a punched
+ * hole), `"relay"` (encrypted, through an Iroh relay), or `"unknown"`.
+ */
+    route(): string {
+    const __rb: Uint8Array = uniffiCaller.rustCall(
+            /*caller:*/ (callStatus) => {
+                return nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(
+                uniffiTypeDesktopConnectionObjectFactory.clonePointer(this),
+                callStatus);
+            },
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+    );
+    try {
+        return FfiConverterString.lift(__rb);
+    } finally {
+        nativeModule().rustbuffer_free(__rb);
     }
     }
     
@@ -841,6 +866,9 @@ function uniffiEnsureInitialized() {
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request() !== 60254) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request");
+    }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route() !== 59248) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route");
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind() !== 57697) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind");

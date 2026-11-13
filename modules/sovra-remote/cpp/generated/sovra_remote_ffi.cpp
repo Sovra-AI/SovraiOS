@@ -153,6 +153,10 @@ extern "C" {
         /*handle*/ uint64_t ptr, 
         RustBuffer request_json
     );
+    RustBuffer uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(
+        /*handle*/ uint64_t ptr, 
+        RustCallStatus *uniffi_out_err
+    );
     /*handle*/ uint64_t uniffi_sovra_remote_ffi_fn_clone_phoneendpoint(
         /*handle*/ uint64_t handle, 
         RustCallStatus *uniffi_out_err
@@ -390,6 +394,8 @@ extern "C" {
     uint16_t uniffi_sovra_remote_ffi_checksum_method_desktopconnection_peer(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request(
+    );
+    uint16_t uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close(
     );
@@ -1947,6 +1953,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_fn_method_desktopconnection_request(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_fn_clone_phoneendpoint"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_clone_phoneendpoint"),
@@ -2443,6 +2457,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close"),
@@ -2729,6 +2751,16 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_method_desktopco
 
         
         return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
+        auto value = uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(uniffi_jsi::Bridging</*handle*/ uint64_t>::fromJs(rt, callInvoker, args[0]), 
+            &status
+        );
+        uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::copyIntoJs(rt, callInvoker, status, args[count - 1]);
+
+        
+        return uniffi::sovra_remote_ffi::Bridging<RustBuffer>::toJs(rt, callInvoker, value);
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_clone_phoneendpoint(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         RustCallStatus status = uniffi::sovra_remote_ffi::Bridging<RustCallStatus>::rustSuccess(rt);
@@ -3209,6 +3241,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_des
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route(
         );
 
         

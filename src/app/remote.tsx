@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChatPanel } from '@/components/chat-panel';
 import { ComputerPanel } from '@/components/computer-panel';
+import { ConnectionCard } from '@/components/connection-card';
+import { routeLabel } from '@/components/connection-status';
 import { ChatsView, SkillsView } from '@/components/desktop-views';
 import { Button, NoticeBanner, Surface, Text } from '@/components/ui';
 import { NEW_CHAT_LABEL, transcript } from '@/remote/desktop';
@@ -28,12 +30,8 @@ const STATUS: Record<Phase, { color: 'success' | 'warning' | 'danger' | 'mutedTe
 };
 
 /** Plain-language recovery for each state; desktop messages are shown, never parsed. */
+/** Connecting and unreachable show live progress instead (`ConnectionCard`). */
 const RECOVERY: Partial<Record<Phase, { title: string; body: string }>> = {
-  connecting: { title: 'Connecting to your computer…', body: 'This can take a few seconds on mobile data.' },
-  unreachable: {
-    title: 'Open Sovra on your computer',
-    body: 'Make sure your computer is awake and online, Sovra is open, and “Use Sovra from your phone” is switched on in Sovra (it switches off whenever Sovra restarts). We keep trying while this screen is open.',
-  },
   disabled: {
     title: 'Turn on phone control',
     body: 'In Sovra on your computer, open Skills and choose “Use Sovra from your phone”. For your safety it switches off whenever Sovra restarts.',
@@ -56,7 +54,7 @@ const SKILL_PAGE_GRACE_MS = 15000;
 
 export default function Remote() {
   const theme = useTheme();
-  const { phase, desktop, snapshot, screenshot, detail, notice, working, skills } = useRemote();
+  const { phase, desktop, snapshot, screenshot, detail, notice, working, skills, progress, route } = useRemote();
   const [tab, setTab] = useState<Tab>('chat');
   const [chosen, setChosen] = useState<Skill | null>(null);
 
@@ -119,7 +117,9 @@ export default function Remote() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, live]);
 
-  const status = STATUS[phase];
+  const trying = progress !== null && progress.step !== 'waiting' && (phase === 'connecting' || phase === 'unreachable');
+  const status =
+    phase === 'connected' ? { ...STATUS.connected, label: routeLabel(route) } : trying ? STATUS.connecting : STATUS[phase];
   const recovery = RECOVERY[phase];
   const busy = !live || working;
 
@@ -174,6 +174,15 @@ export default function Remote() {
           </View>
 
           {notice ? <NoticeBanner tone={notice.tone} text={notice.text} onDismiss={() => useRemote.getState().dismissNotice()} /> : null}
+
+          {progress && !live && (phase === 'connecting' || phase === 'unreachable') ? (
+            <ConnectionCard
+              progress={progress}
+              computer={desktop?.name ?? 'your computer'}
+              detail={detail}
+              onRetry={() => useRemote.getState().retryNow()}
+            />
+          ) : null}
 
           {recovery && !live ? (
             <Surface variant="elevated" style={{ gap: theme.space.small + 4 }}>
