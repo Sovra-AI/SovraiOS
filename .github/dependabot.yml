@@ -28,6 +28,9 @@ updates:
     labels:
       - dependencies
     ignore:
+      # Major versions (e.g. ESLint, TypeScript) are upgraded by hand in their own pull request.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
       # Expo pins SDK-compatible versions; upgrade with `npx expo install --fix` per SDK release.
       - dependency-name: "expo*"
       - dependency-name: "react"
