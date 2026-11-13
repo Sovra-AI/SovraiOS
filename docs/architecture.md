@@ -83,6 +83,13 @@ the connection onto it. Relays see which keys talk and how much, never the conte
 `phone_reaches_desktop_by_key_alone_through_a_relay` in the transport tests (ignored by
 default; it needs the Internet) dials a desktop by key with LAN sockets disabled.
 
+To check this without leaving the building, firewall an Android emulator (`adb root`) so it
+behaves like a strict network: drop all UDP except the emulator's DNS at `10.0.2.3`, drop
+private ranges and your own public IP (no LAN or hairpin path), and drop 1.1.1.1, 8.8.8.8 and
+9.9.9.9 (third-party DNS blocked). On 2026-11-13 the current build connected under those rules
+and showed "Connected through an encrypted relay"; the build before `OsFirstResolver` sent over
+11,000 packets to the blocked resolvers and stayed on "Can't reach your computer".
+
 ## Connection progress
 
 While it is not connected, the remote screen shows each step (secure endpoint ready, reaching
