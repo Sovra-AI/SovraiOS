@@ -34,6 +34,9 @@ pub const MAX_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(8);
 /// Relay fallback and hole punching can take a few seconds on cellular networks.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+/// QUIC keep-alive. Carrier NATs drop idle UDP mappings in tens of seconds; a ping well
+/// inside that keeps a direct path open when a slow refresh (a large screenshot) leaves a gap.
+const KEEP_ALIVE: Duration = Duration::from_secs(10);
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TransportError {
@@ -238,6 +241,31 @@ pub fn phone_device_id(secret_hex: String) -> Result<String, TransportError> {
     Ok(to_hex(secret.public().as_bytes()))
 }
 
+/// Relays, address lookup at `dns.iroh.link`, and the phone's own DNS.
+fn internet_builder() -> endpoint::Builder {
+    Endpoint::builder(presets::N0).dns_resolver(DnsResolver::custom(OsFirstResolver::new()))
+}
+
+async fn bind_endpoint(
+    secret_hex: String,
+    builder: endpoint::Builder,
+) -> Result<Arc<PhoneEndpoint>, TransportError> {
+    let secret = SecretKey::from_bytes(&parse_hex32(&secret_hex)?);
+    let endpoint = builder
+        .secret_key(secret)
+        // A pure client: it never accepts incoming protocols.
+        .alpns(Vec::new())
+        .transport_config(
+            endpoint::QuicTransportConfig::builder()
+                .keep_alive_interval(KEEP_ALIVE)
+                .build(),
+        )
+        .bind()
+        .await
+        .map_err(unreachable)?;
+    Ok(Arc::new(PhoneEndpoint { endpoint }))
+}
+
 /// The phone's Iroh endpoint. Bind once per foreground session; close on suspend.
 #[derive(Debug, uniffi::Object)]
 pub struct PhoneEndpoint {
@@ -249,20 +277,19 @@ impl PhoneEndpoint {
     /// `local_only` disables relays and Internet address lookup (single-LAN testing).
     #[uniffi::constructor]
     pub async fn bind(secret_hex: String, local_only: bool) -> Result<Arc<Self>, TransportError> {
-        let secret = SecretKey::from_bytes(&parse_hex32(&secret_hex)?);
         let builder = if local_only {
             Endpoint::builder(presets::Minimal)
         } else {
-            Endpoint::builder(presets::N0).dns_resolver(DnsResolver::custom(OsFirstResolver::new()))
+            internet_builder()
         };
-        let endpoint = builder
-            .secret_key(secret)
-            // A pure client: it never accepts incoming protocols.
-            .alpns(Vec::new())
-            .bind()
-            .await
-            .map_err(unreachable)?;
-        Ok(Arc::new(Self { endpoint }))
+        bind_endpoint(secret_hex, builder).await
+    }
+
+    /// No direct sockets at all: every byte goes through the desktop's encrypted relay over
+    /// TCP 443. For checking the path a phone takes on a network that blocks UDP or the LAN.
+    #[uniffi::constructor]
+    pub async fn bind_relay_only(secret_hex: String) -> Result<Arc<Self>, TransportError> {
+        bind_endpoint(secret_hex, internet_builder().clear_ip_transports()).await
     }
 
     pub fn device_id(&self) -> String {
@@ -432,14 +459,9 @@ mod tests {
                 connection.closed().await;
             })
         };
-        let phone = Endpoint::builder(presets::N0)
-            .dns_resolver(DnsResolver::custom(OsFirstResolver::new()))
-            .clear_ip_transports()
-            .alpns(Vec::new())
-            .bind()
+        let phone = PhoneEndpoint::bind_relay_only(generate_phone_secret())
             .await
             .unwrap();
-        let phone = PhoneEndpoint { endpoint: phone };
         let key_only = format!(
             r#"{{"device":"{}","relay":null,"addrs":[]}}"#,
             to_hex(desktop.id().as_bytes())

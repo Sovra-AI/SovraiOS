@@ -4,6 +4,7 @@
  */
 import { type DesktopConnectionLike, PhoneEndpoint, TransportError_Tags, generatePhoneSecret } from 'sovra-remote';
 
+import type { Reach } from '@/state/preferences';
 import { loadPhoneSecret, savePhoneSecret } from '@/state/storage';
 
 import { type DesktopConnection, type PhoneTransport, type Route, TransportFailure, type TransportFailureKind } from './transport';
@@ -67,11 +68,11 @@ class NativeConnection implements DesktopConnection {
   }
 }
 
-export async function createNativeTransport(localOnly: boolean): Promise<PhoneTransport> {
+export async function createNativeTransport(reach: Reach): Promise<PhoneTransport> {
   const secret = await phoneSecret();
   let endpoint;
   try {
-    endpoint = await PhoneEndpoint.bind(secret, localOnly);
+    endpoint = reach === 'relay' ? await PhoneEndpoint.bindRelayOnly(secret) : await PhoneEndpoint.bind(secret, reach === 'local');
   } catch (error) {
     throw translate(error);
   }

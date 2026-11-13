@@ -32,6 +32,7 @@ class NativeSovraRemoteFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_clone_phoneendpoint(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_free_phoneendpoint(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
@@ -96,6 +97,7 @@ class NativeSovraRemoteFfi : public jsi::HostObject {
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_connect(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
+    jsi::Value cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_ffi_sovra_remote_ffi_uniffi_contract_version(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_internal_fn_method_desktopconnection_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);
     jsi::Value cpp_uniffi_internal_fn_method_phoneendpoint_ffi__bless_pointer(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count);

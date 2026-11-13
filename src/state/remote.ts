@@ -14,7 +14,7 @@ import { decodeTicket } from '@/remote/ticket';
 import type { PhoneTransport, Route } from '@/remote/transport';
 import type { InspectResult } from '@/remote/wire';
 
-import { usePreferences } from './preferences';
+import { type Reach, reachFrom, usePreferences } from './preferences';
 import { type SavedDesktop, deleteDesktop, loadDesktop, saveDesktop } from './storage';
 
 export type Phase =
@@ -45,7 +45,7 @@ export interface ConnectionProgress {
   retryAt: number | null;
 }
 
-export type TransportFactory = (localOnly: boolean) => Promise<PhoneTransport>;
+export type TransportFactory = (reach: Reach) => Promise<PhoneTransport>;
 
 interface RemoteState {
   phase: Phase;
@@ -113,8 +113,7 @@ function phaseFor(code: ClientErrorCode): Phase {
 async function ensureClient(): Promise<RemoteClient | null> {
   if (client) return client;
   if (!factory) return null;
-  const { localOnly } = usePreferences.getState();
-  transport = await factory(localOnly);
+  transport = await factory(reachFrom(usePreferences.getState()));
   client = new RemoteClient(transport, useRemote.getState().desktop?.address ?? null);
   return client;
 }
@@ -182,7 +181,7 @@ export const useRemote = create<RemoteState>((set, get) => ({
     // shared client mid-pairing. The shared one is replaced afterwards for the new computer.
     let remote: RemoteClient;
     try {
-      remote = new RemoteClient(await factory(usePreferences.getState().localOnly), null);
+      remote = new RemoteClient(await factory(reachFrom(usePreferences.getState())), null);
     } catch (error) {
       return { ok: false, code: 'unreachable', message: `Could not start a secure connection: ${String(error)}` };
     }

@@ -127,9 +127,17 @@ export default function Settings() {
               <Row title="Same Wi-Fi only" detail="For testing: no relays, so mobile data will not work.">
                 <Switch
                   value={preferences.localOnly}
-                  onValueChange={(localOnly) => toggle({ localOnly })}
+                  onValueChange={(localOnly) => toggle({ localOnly, ...(localOnly ? { relayOnly: false } : {}) })}
                   trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
                   accessibilityLabel="Same Wi-Fi only"
+                />
+              </Row>
+              <Row title="Encrypted relay only" detail="For testing: skips direct connections, the way a phone on a strict network reaches your computer.">
+                <Switch
+                  value={preferences.relayOnly}
+                  onValueChange={(relayOnly) => toggle({ relayOnly, ...(relayOnly ? { localOnly: false } : {}) })}
+                  trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
+                  accessibilityLabel="Encrypted relay only"
                 />
               </Row>
             </Surface>

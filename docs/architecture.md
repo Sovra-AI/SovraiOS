@@ -90,6 +90,11 @@ private ranges and your own public IP (no LAN or hairpin path), and drop 1.1.1.1
 and showed "Connected through an encrypted relay"; the build before `OsFirstResolver` sent over
 11,000 packets to the blocked resolvers and stayed on "Can't reach your computer".
 
+**Settings → Advanced → Encrypted relay only** binds the endpoint with no direct sockets
+(`PhoneEndpoint::bind_relay_only`), so a phone on any network can check the path a strict
+network forces. The transport also sends a QUIC keep-alive every 10 s, inside the idle limit of
+carrier NATs, so a direct path survives a slow refresh.
+
 ## Connection progress
 
 While it is not connected, the remote screen shows each step (secure endpoint ready, reaching

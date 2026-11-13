@@ -681,6 +681,39 @@ private constructor(pointer: UniffiHandle) {
     }
     }
     
+/**
+ * No direct sockets at all: every byte goes through the desktop's encrypted relay over
+ * TCP 443. For checking the path a phone takes on a network that blocks UDP or the LAN.
+ */
+    static async bindRelayOnly(secretHex: string, asyncOpts_?: { signal: AbortSignal }): Promise<PhoneEndpointLike> /*throws*/ {
+    const __stack = uniffiIsDebug ? new Error().stack : undefined;
+    try {
+        return await uniffiRustCallAsync(
+            /*rustCaller:*/ uniffiCaller,
+            /*rustFutureFunc:*/ () => {
+                return nativeModule().ubrn_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(FfiConverterString.lower(secretHex, nativeModule().rustbuffer_alloc)
+                );
+            },
+            /*pollFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_poll_u64,
+            /*cancelFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_cancel_u64,
+            /*completeFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_complete_u64,
+            /*freeFunc:*/ nativeModule().ubrn_ffi_sovra_remote_ffi_rust_future_free_u64,
+            // Async returns always go through the JS-side converter: the
+            // completed future's value is deserialized here by the
+            // per-callable return-type converter.
+            /*liftFunc:*/ FfiConverterTypePhoneEndpoint.lift.bind(FfiConverterTypePhoneEndpoint),
+            /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+            /*asyncOpts:*/ asyncOpts_,
+            /*errorHandler:*/ FfiConverterTypeTransportError.lift.bind(FfiConverterTypeTransportError)
+        );
+    } catch (__error: any) {
+        if (uniffiIsDebug && __error instanceof Error) {
+            __error.stack = __stack;
+        }
+        throw __error;
+    }
+    }
+    
 
     
     async close(asyncOpts_?: { signal: AbortSignal }): Promise<void> {
@@ -872,6 +905,9 @@ function uniffiEnsureInitialized() {
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind() !== 57697) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind");
+    }
+    if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only() !== 22248) {
+        throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only");
     }
     if (nativeModule().ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close() !== 60062) {
         throw new UniffiInternalError.ApiChecksumMismatch("uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close");

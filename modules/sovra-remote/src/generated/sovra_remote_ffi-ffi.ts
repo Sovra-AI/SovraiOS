@@ -79,6 +79,7 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_request(uniffiSelf: bigint, requestJson: Uint8Array): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_desktopconnection_route(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
     ubrn_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind(secretHex: Uint8Array, localOnly: number): bigint;
+    ubrn_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(secretHex: Uint8Array): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close(uniffiSelf: bigint): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_connect(uniffiSelf: bigint, addressJson: Uint8Array): bigint;
     ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_device_id(uniffiSelf: bigint, uniffi_out_err: UniffiRustCallStatus): Uint8Array;
@@ -91,6 +92,7 @@ interface NativeModuleInterface {
     ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_request(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_desktopconnection_route(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(): number;
+    ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_close(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_connect(): number;
     ubrn_uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(): number;

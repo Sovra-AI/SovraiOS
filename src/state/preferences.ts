@@ -10,11 +10,21 @@ export interface Preferences {
   refreshMs: number;
   /** Testing on one Wi-Fi only: no relays or Internet address lookup. */
   localOnly: boolean;
+  /** Testing the off-network path: no direct sockets, everything through the encrypted relay. */
+  relayOnly: boolean;
   /** Fetch a screenshot of the Sovra window with each refresh, when the desktop supports it. */
   screenshots: boolean;
 }
 
-const defaults: Preferences = { appearance: 'system', refreshMs: 2000, localOnly: false, screenshots: false };
+const defaults: Preferences = { appearance: 'system', refreshMs: 2000, localOnly: false, relayOnly: false, screenshots: false };
+
+/** How the phone may reach the computer. */
+export type Reach = 'internet' | 'local' | 'relay';
+
+export function reachFrom({ localOnly, relayOnly }: Pick<Preferences, 'localOnly' | 'relayOnly'>): Reach {
+  if (localOnly) return 'local';
+  return relayOnly ? 'relay' : 'internet';
+}
 
 interface PreferencesStore extends Preferences {
   loaded: boolean;
@@ -31,7 +41,7 @@ export const usePreferences = create<PreferencesStore>((set, get) => ({
   },
   set(patch) {
     set(patch);
-    const { appearance, refreshMs, localOnly, screenshots } = { ...get(), ...patch };
-    void savePreferences<Preferences>({ appearance, refreshMs, localOnly, screenshots });
+    const { appearance, refreshMs, localOnly, relayOnly, screenshots } = { ...get(), ...patch };
+    void savePreferences<Preferences>({ appearance, refreshMs, localOnly, relayOnly, screenshots });
   },
 }));

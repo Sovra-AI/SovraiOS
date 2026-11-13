@@ -18,6 +18,9 @@ Add entries under **Unreleased** as part of the change that introduces them.
   address-lookup hosts with the phone's own DNS (DNS64/NAT64, VPN and Private DNS aware)
   instead of fixed public resolvers that iOS and many mobile networks block, so the phone
   reaches its computer over mobile data or another network through Iroh's encrypted relay.
+- **Encrypted relay only (Advanced settings).** Skips direct connections so the phone takes the
+  same encrypted relay path a strict network forces; useful for checking a setup away from
+  home. The transport also keeps idle connections alive with a QUIC ping every 10 s.
 - **Clear connection progress.** While connecting, the remote screen shows each step, how long
   it has been trying, the attempt, the last failure and a countdown with **Try now**; pairing
   shows a ticking elapsed time. Once connected the status says "Connected directly" or

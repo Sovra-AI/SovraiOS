@@ -169,6 +169,9 @@ extern "C" {
         RustBuffer secret_hex, 
         int8_t local_only
     );
+    /*handle*/ uint64_t uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(
+        RustBuffer secret_hex
+    );
     /*handle*/ uint64_t uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close(
         /*handle*/ uint64_t ptr
     );
@@ -404,6 +407,8 @@ extern "C" {
     uint16_t uniffi_sovra_remote_ffi_checksum_method_phoneendpoint_device_id(
     );
     uint16_t uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(
+    );
+    uint16_t uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(
     );
     uint32_t ffi_sovra_remote_ffi_uniffi_contract_version(
     );
@@ -1985,6 +1990,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only"),
+        1,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_fn_method_phoneendpoint_close"),
@@ -2497,6 +2510,14 @@ NativeSovraRemoteFfi::NativeSovraRemoteFfi(
             return this->cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(rt, thisVal, args, count);
         }
     );
+    props["ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only"] = jsi::Function::createFromHostFunction(
+        rt,
+        jsi::PropNameID::forAscii(rt, "ubrn_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only"),
+        0,
+        [this](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+            return this->cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(rt, thisVal, args, count);
+        }
+    );
     props["ubrn_ffi_sovra_remote_ffi_uniffi_contract_version"] = jsi::Function::createFromHostFunction(
         rt,
         jsi::PropNameID::forAscii(rt, "ubrn_ffi_sovra_remote_ffi_uniffi_contract_version"),
@@ -2784,6 +2805,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_free_phoneendpoi
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind(uniffi::sovra_remote_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0]), uniffi_jsi::Bridging<int8_t>::fromJs(rt, callInvoker, args[1])
+        );
+
+        
+        return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_fn_constructor_phoneendpoint_bind_relay_only(uniffi::sovra_remote_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker, args[0])
         );
 
         
@@ -3276,6 +3304,13 @@ jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_method_pho
 }
 jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
         auto value = uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind(
+        );
+
+        
+        return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeSovraRemoteFfi::cpp_uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(jsi::Runtime& rt, const jsi::Value& thisVal, const jsi::Value* args, size_t count) {
+        auto value = uniffi_sovra_remote_ffi_checksum_constructor_phoneendpoint_bind_relay_only(
         );
 
         
