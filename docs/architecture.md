@@ -1,6 +1,6 @@
 # Architecture
 
-The desktop owns the contract: [`SovraHarness/docs/remote-control.md`](../../SovraHarness/docs/remote-control.md),
+The desktop owns the contract: [SovraHarness `docs/remote-control.md`](https://github.com/Sovra-AI/SovraHarness/blob/main/docs/remote-control.md),
 `crates/sovra-core/src/remote_control/` and the reference client
 `crates/sovra-runtime/src/remote_reference.rs`. This app implements its phone side.
 

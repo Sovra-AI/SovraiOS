@@ -1,9 +1,19 @@
 # Changelog
 
+All notable changes to SovraiOS are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
+[Semantic Versioning](https://semver.org/). No store release is published yet.
+
+Add entries under **Unreleased** as part of the change that introduces them.
+
 ## [Unreleased]
 
 ### Added
 
+- **Fair-code license and public repository files.** Source is under n8n's Sustainable
+  Use License with Sovra as the licensor, the same as SovraHarness, with a Code of
+  Conduct, security policy, contributing guide, issue and pull request templates, and a
+  documentation index and maintenance guide in the shared Sovra style.
 - Expo SDK 58 / React Native 0.88 app (New Architecture, React Compiler, Expo Router typed routes).
 - Pair with Sovra Harness by scanning its QR code, opening its `sovra://remote-control` link, or pasting it.
 - Automatic reconnect to the paired computer on open, over Wi-Fi or mobile data (Iroh relay fallback).
@@ -17,6 +27,10 @@
 - Sovra theme ported from the desktop design system, light and dark; app icons from the Sovra mark.
 
 ### Changed
+
+- **SovraiOS README.** The repository page uses the Sovra README layout: logo, title,
+  quick start, data boundaries, development, and guides. Package and crate manifests
+  declare `LicenseRef-SustainableUse-1.0`.
 
 - Simpler remote screen for everyone: four tabs — **Chat**, **Chats**, **Skills** and
   **Computer** (pages, picture or list of controls, keyboard keys) — instead of five, with

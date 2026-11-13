@@ -1,4 +1,4 @@
-# Sovra for phones — agent rules
+# SovraiOS — agent rules
 
 Expo / React Native app that remote-controls Sovra Harness on the desktop. The desktop
 contract is canonical: `../SovraHarness/docs/remote-control.md`. Read `docs/architecture.md`

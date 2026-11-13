@@ -1,84 +1,159 @@
-# Sovra for phones
+<p align="center">
+  <img src="assets/images/sovra-logo.svg" alt="Sovra logo" width="160">
+</p>
 
-Control [Sovra Harness](https://github.com/Sovra-AI) on your computer from your phone.
-Pair once by scanning a code; after that, opening the app connects to your computer by
-itself — on the same Wi-Fi or over mobile data — end-to-end encrypted.
+<h1 align="center">SovraiOS</h1>
 
-On the phone you can:
+<p align="center">
+  Use Sovra on your computer from your iPhone.<br>
+  Built with Expo and React Native, with a Rust transport shared with Android.
+</p>
 
-- **Chat** — write a message and send it through Sovra's real chat box; read visible replies; press **Stop**.
-- **Screen** — a live, scaled picture of the Sovra window built from its controls (plus a
-  screenshot where the desktop can capture one). Tap any control to press it.
-- **Controls** — every labelled button, tab and box as a large, accessible list; scroll lists.
-- **Keys** — Enter, Esc, Tab, Backspace, arrows.
+<p align="center">
+  <a href="#quick-start">Getting started</a>
+  ·
+  <a href="docs/README.md">Documentation</a>
+  ·
+  <a href="https://github.com/Sovra-AI/SovraHarness">SovraHarness</a>
+  ·
+  <a href="https://github.com/Sovra-AI/SovraAndroid">SovraAndroid</a>
+  ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+  ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-This is the phone half of the contract in
-[`SovraHarness/docs/remote-control.md`](../SovraHarness/docs/remote-control.md). It controls
-Sovra's window and chats only — not your operating system, files or shell.
+Pair once by scanning a code shown by [SovraHarness](https://github.com/Sovra-AI/SovraHarness)
+on your computer. After that, opening the app connects to that computer by itself, on the
+same Wi-Fi or over mobile data, end-to-end encrypted.
 
-## How to use it
+> **License:** Source on `main` is available under n8n's Sustainable Use License,
+> which n8n's docs allow other projects to use. This is fair-code:
+> source-available, and not an OSI open-source license. Enterprise files have
+> separate terms. See [License](#license).
+
+## What you can do
+
+- **Chat:** read the conversation as bubbles, write a message that is typed through
+  Sovra's real chat box, and press **Stop**.
+- **Chats:** browse every chat in Sovra's sidebar, search, show older chats, or start a
+  new one.
+- **Skills:** type `/` or open the Skills tab to pick one of Sovra's skills.
+- **Computer:** jump to Sovra's pages, see a live picture of its window or a list of its
+  controls, press keyboard keys, and type into any box there.
+
+The app controls the Sovra window only, not your operating system, files, or shell. The
+native Android app with the same screens is [SovraAndroid](https://github.com/Sovra-AI/SovraAndroid).
+
+## Quick start
+
+### Use the app
+
+No App Store or TestFlight build is published yet; [build from source](#build-from-source).
 
 1. On your computer, in Sovra: **Skills → Use Sovra from your phone** (or `/remote-control`).
-2. In this app: **Scan the code** (or scan it with the phone's camera app — the `sovra://`
-   link opens this app). The code works once and expires after five minutes.
-3. Next time just open the app. If it says **Start remote control on your computer**, run the
-   skill again: for safety it switches off whenever Sovra restarts. Your phone stays paired.
+2. In the app: **Scan the code**, or scan it with the iPhone camera; the `sovra://` link
+   opens the app. The code works once and expires after five minutes.
+3. Next time, just open the app. If it says **Start remote control on your computer**, run
+   the skill again: phone access switches off whenever Sovra restarts. Your phone stays paired.
 
-To revoke a phone, choose **Forget** for it in Sovra on your computer. **Settings → Forget this
-computer** on the phone only removes it from the phone.
+To revoke a phone, choose **Forget** for it in Sovra on your computer. **Settings → Forget
+this computer** on the phone only removes the computer from the phone.
 
-## Stack
+### Build from source
 
-| Concern | Choice |
-| --- | --- |
-| App | Expo SDK 58, React Native 0.88 (New Architecture only), React 19.3, React Compiler, TypeScript 6 strict |
-| Navigation | Expo Router (typed routes), file-based in `src/app/` |
-| State | Zustand stores in `src/state/` |
-| Secure storage | `expo-secure-store` (Keychain / Keystore, this-device-only, no backup) |
-| QR scanning | `expo-camera` |
-| Transport | Rust turbo module `modules/sovra-remote` (Iroh 1.4.1 QUIC, same version as the desktop) built with [uniffi-bindgen-react-native](https://github.com/jhugman/uniffi-bindgen-react-native) |
-| Tests | Jest (`jest-expo`) for the protocol, `cargo test` for the transport, `interop/` against the real desktop |
-
-Because the app contains a native Rust module it needs a **development build**, not Expo Go.
-
-## Develop
-
-Prerequisites: Node 20+, Rust (stable), Android SDK + NDK 27 (`ANDROID_HOME`, `ANDROID_NDK_HOME`),
-`cargo install cargo-ndk`, `rustup target add aarch64-linux-android x86_64-linux-android`.
-iOS needs macOS with Xcode and `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`.
+The app contains a native Rust module, so it needs a **development build**; Expo Go cannot
+load it. You need macOS with Xcode, Node.js 20+, and Rust through rustup with the iOS targets:
 
 ```sh
+git clone https://github.com/Sovra-AI/SovraiOS.git
+cd SovraiOS
+rustup target add aarch64-apple-ios aarch64-apple-ios-sim
 npm install
-npm run native:android        # build the Rust transport for Android (+ regenerate bindings)
-npm run android               # expo run:android — dev build on a device/emulator
-npm start                     # Metro for an installed dev build
-
-# macOS only
-npm run native:ios && npm run ios
+npm run native:ios    # build the Rust transport and regenerate its bindings
+npm run ios           # expo run:ios: dev build on a simulator or device
+npm start             # Metro, for an already installed dev build
 ```
 
-Checks (run before every commit):
+Running on a physical iPhone needs an Apple developer team that can sign the build. The
+same code also builds for Android (`npm run native:android && npm run android`, with the
+Android SDK, NDK 27 and `cargo-ndk`); see [Development](docs/development.md).
 
-```sh
-npm run check                 # tsc + eslint + jest + cargo test
+## Status and data boundaries
+
+The app is under active development. Read the [changelog](CHANGELOG.md) for changes and
+the [documentation](docs/README.md) for current behavior.
+
+- The phone talks only to the computer it paired with. It uses Iroh QUIC with that
+  computer's key pinned, directly or through Iroh's encrypted relays, so relays and address
+  lookup see connection metadata but not content.
+- The pairing link is a single-use bearer invitation. The app never stores, logs, or
+  routes it, and clears it from the clipboard after pasting.
+- The phone key lives in the iOS Keychain on this device only, excluded from backups.
+- The app works only while it is open on screen. It cannot wake a closed app or a sleeping
+  computer, and there are no push notifications.
+- Reading replies uses desktop screenshots where the desktop can capture them; otherwise
+  only labelled text is shown.
+
+See [Security](SECURITY.md) for reporting and the
+[desktop phone-control contract](https://github.com/Sovra-AI/SovraHarness/blob/main/docs/remote-control.md)
+for the protocol.
+
+## Development
+
+| Command | Purpose |
+| --- | --- |
+| `npm run ios` | Development build and launch on iOS |
+| `npm start` | Metro for an installed development build |
+| `npm run native:ios` | Rebuild the Rust transport and its bindings for iOS |
+| `npm run check` | TypeScript, ESLint, Jest, and `cargo test`; must pass before every commit |
+| `npm run doctor` | Check Expo SDK compatibility |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request workflow and
+[AGENTS.md](AGENTS.md) for engineering rules. To test against a real desktop, follow
+[Desktop interop tests](interop/README.md).
+
+### Architecture
+
+Protocol decisions are pure TypeScript in `src/remote/` and are tested by Jest. The Rust
+module only moves bytes. Screens render state from `src/state/`.
+
+```mermaid
+flowchart LR
+  ui["src/app: screens"] --> state["src/state: session, storage"]
+  state --> client["src/remote: protocol client"]
+  client --> native["modules/sovra-remote: Rust transport"]
+  native -->|"Iroh QUIC, sovra/remote-control/1"| desktop["SovraHarness desktop"]
 ```
 
-Desktop interoperability (needs `../SovraHarness`): see [`interop/README.md`](interop/README.md).
+Read [Architecture](docs/architecture.md) for the layers and the rules the client enforces.
 
-Release builds go through EAS (`npx eas-cli@latest build`); the EAS build image must run
-`npm run native:android` / `native:ios` first (the 300+ MB static libraries are not committed).
+## Documentation
 
-## Layout
+| Guide | Covers |
+| --- | --- |
+| [Development](docs/development.md) | Prerequisites, builds, checks, and the project layout |
+| [Architecture](docs/architecture.md) | Layers, protocol rules, pairing, chat, and known limits |
+| [Theming](docs/theming.md) | Sovra tokens ported from the desktop and mobile adaptations |
+| [Desktop interop tests](interop/README.md) | Tests against the real desktop endpoint and runtime |
+| [Documentation index](docs/README.md) | All guides |
 
-```
-src/app/            screens (Expo Router): pair, scan, remote, settings, deep link
-src/components/     Sovra UI primitives and the remote views
-src/remote/         protocol: wire types, strict ticket parser, client, chat flow (pure TS, tested)
-src/state/          Zustand stores: remote session, preferences, secure storage
-src/theme/          Sovra tokens ported from the desktop design system
-modules/sovra-remote/  Rust → TurboModule (Iroh transport only; no protocol decisions)
-interop/            Rust tests against the real desktop endpoint and runtime
-docs/               architecture, security and theming notes
-```
+## Contributing and support
 
-More: [architecture](docs/architecture.md) · [theming](docs/theming.md) · [agent rules](AGENTS.md).
+Bug reports, feature requests, documentation improvements, and code contributions are
+welcome. Search [existing issues](https://github.com/Sovra-AI/SovraiOS/issues) before
+opening a new one, and follow [CONTRIBUTING.md](CONTRIBUTING.md) when submitting a pull
+request. Include your app commit, iOS version, desktop version, and reproduction steps;
+remove pairing links, credentials, and personal data from logs and screenshots.
+
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md) in project spaces. Report
+vulnerabilities using [SECURITY.md](SECURITY.md), without posting exploit details in
+public issues.
+
+## License
+
+[LICENSE](LICENSE) contains n8n's Sustainable Use License, Version 1.0, with Sovra as the
+licensor. This is a fair-code license with use and distribution restrictions, not an OSI
+open-source license. It applies to source on `main`; the license excludes other branches.
+Files with `.ee.` in their name or `.ee` in their directory name are covered separately by
+[LICENSE_EE.md](LICENSE_EE.md). Third-party components retain their own licenses.

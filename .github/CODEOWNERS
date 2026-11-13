@@ -1,0 +1,3 @@
+# Default reviewers on every pull request.
+# Configure required code-owner review in repository branch protection.
+* @shaunbarney @pedroclem2

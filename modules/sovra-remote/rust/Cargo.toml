@@ -4,7 +4,7 @@ description = "Phone side of the Sovra Harness remote-control transport (Iroh QU
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.91"
-license = "MIT"
+license = "LicenseRef-SustainableUse-1.0"
 publish = false
 
 [lib]

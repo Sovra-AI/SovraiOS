@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Sovra-AI/SovraiOS/blob/main/SECURITY.md
+    about: Follow the private reporting instructions; do not post vulnerability details in an issue.
+  - name: Setup and documentation
+    url: https://github.com/Sovra-AI/SovraiOS/blob/main/docs/README.md
+    about: Read setup and feature guides before filing an issue.
+  - name: Desktop app issues
+    url: https://github.com/Sovra-AI/SovraHarness/issues
+    about: Problems in Sovra on your computer belong in SovraHarness.
