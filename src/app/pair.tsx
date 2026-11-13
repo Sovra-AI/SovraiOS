@@ -11,8 +11,8 @@ import { useTheme } from '@/theme';
 
 const STEPS = [
   'Open Sovra on your computer.',
-  'Go to Skills → “Use Sovra from your phone” (or type /remote-control in a chat).',
-  'Scan the code it shows. It works once and expires after five minutes.',
+  'Click Skills, then “Use Sovra from your phone”. A square code appears.',
+  'Tap “Scan the code” below and point your camera at it.',
 ];
 
 export default function Pair() {
@@ -22,6 +22,7 @@ export default function Pair() {
   const detail = useRemote((state) => state.detail);
   const notice = useRemote((state) => state.notice);
   const [focused, setFocused] = useState<string | null>(null);
+  const [naming, setNaming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,33 +84,6 @@ export default function Pair() {
             ))}
           </Surface>
 
-          <View style={{ gap: theme.space.medium }}>
-            <Field label="This phone's name" hint="Shown on your computer so you can recognise and forget it.">
-              <TextInput
-                value={draft.phoneName}
-                onChangeText={(phoneName) => draft.set({ phoneName })}
-                maxLength={80}
-                onFocus={() => setFocused('phone')}
-                onBlur={() => setFocused(null)}
-                style={inputStyle(theme, focused === 'phone')}
-                placeholderTextColor={theme.colors.mutedText}
-                accessibilityLabel="This phone's name"
-              />
-            </Field>
-            <Field label="Your computer's name">
-              <TextInput
-                value={draft.desktopName}
-                onChangeText={(desktopName) => draft.set({ desktopName })}
-                maxLength={80}
-                onFocus={() => setFocused('desktop')}
-                onBlur={() => setFocused(null)}
-                style={inputStyle(theme, focused === 'desktop')}
-                placeholderTextColor={theme.colors.mutedText}
-                accessibilityLabel="Your computer's name"
-              />
-            </Field>
-          </View>
-
           {error ? <NoticeBanner tone="danger" text={error} /> : null}
 
           <View style={{ gap: theme.space.small + 4 }}>
@@ -117,9 +91,45 @@ export default function Pair() {
             <Button label="Paste a pairing link instead" variant="ghost" onPress={pasteLink} busy={busy} />
           </View>
 
+          {naming ? (
+            <View style={{ gap: theme.space.medium }}>
+              <Field label="This phone's name" hint="Shown on your computer so you can recognise and forget it.">
+                <TextInput
+                  value={draft.phoneName}
+                  onChangeText={(phoneName) => draft.set({ phoneName })}
+                  maxLength={80}
+                  onFocus={() => setFocused('phone')}
+                  onBlur={() => setFocused(null)}
+                  style={inputStyle(theme, focused === 'phone')}
+                  placeholderTextColor={theme.colors.mutedText}
+                  accessibilityLabel="This phone's name"
+                />
+              </Field>
+              <Field label="Your computer's name">
+                <TextInput
+                  value={draft.desktopName}
+                  onChangeText={(desktopName) => draft.set({ desktopName })}
+                  maxLength={80}
+                  onFocus={() => setFocused('desktop')}
+                  onBlur={() => setFocused(null)}
+                  style={inputStyle(theme, focused === 'desktop')}
+                  placeholderTextColor={theme.colors.mutedText}
+                  accessibilityLabel="Your computer's name"
+                />
+              </Field>
+            </View>
+          ) : (
+            <Button
+              label="Change names (optional)"
+              variant="ghost"
+              size="compact"
+              onPress={() => setNaming(true)}
+              accessibilityHint="Change what this phone and your computer are called"
+            />
+          )}
+
           <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
-            Everything is end-to-end encrypted between this phone and your computer. Your computer must be awake, online and
-            running Sovra.
+            Private and encrypted from end to end. Works on Wi-Fi or mobile data while your computer is awake and Sovra is open.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { Backoff } from '@/remote/backoff';
 import { sendChatMessage, stopWork } from '@/remote/chat';
 import { type ClientErrorCode, type Intent, type Outcome, RemoteClient } from '@/remote/client';
+import { type Skill, loadSkills } from '@/remote/skills';
 import { decodeTicket } from '@/remote/ticket';
 import type { PhoneTransport } from '@/remote/transport';
 import type { InspectResult } from '@/remote/wire';
@@ -44,15 +45,23 @@ interface RemoteState {
   detail: string | null;
   notice: Notice | null;
   working: boolean;
+  /** Sovra's `/` skills, read once from the computer (null until loaded). */
+  skills: Skill[] | null;
 
   init(factory: TransportFactory): Promise<void>;
   pair(link: string, phoneName: string, desktopName: string): Promise<Outcome<null>>;
   refresh(): Promise<void>;
   startLive(): void;
   stopLive(): void;
+  /** The Screen tab (and the Chat tab without labelled messages) needs screenshots even when the Screen preference is off. */
+  setPictureWanted(wanted: boolean): void;
   act(intent: Intent): Promise<boolean>;
   send(text: string, submit?: boolean): Promise<boolean>;
+  /** Run a navigation flow (open Skills, search, open a chat…) and refresh afterwards. */
+  perform(task: (client: RemoteClient) => Promise<Outcome<unknown>>): Promise<boolean>;
   stop(): Promise<boolean>;
+  /** Read Sovra's skills from the computer unless already known (`force` re-reads). */
+  fetchSkills(force?: boolean): Promise<boolean>;
   forget(): Promise<void>;
   dismissNotice(): void;
 }
@@ -62,6 +71,8 @@ let transport: PhoneTransport | null = null;
 let client: RemoteClient | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let live = false;
+let pictureWanted = false;
+let fetchingSkills: Promise<boolean> | null = null;
 const backoff = new Backoff();
 
 function phaseFor(code: ClientErrorCode): Phase {
@@ -111,6 +122,7 @@ export const useRemote = create<RemoteState>((set, get) => ({
   detail: null,
   notice: null,
   working: false,
+  skills: null,
 
   async init(next) {
     factory = next;
@@ -124,15 +136,19 @@ export const useRemote = create<RemoteState>((set, get) => ({
     if (!ticket) {
       return { ok: false, code: 'invalid_invitation', message: 'That is not a Sovra pairing code. Scan the code shown on your computer.' };
     }
-    let remote: RemoteClient | null;
+    if (!factory) return { ok: false, code: 'unreachable', message: 'Remote control is not available in this build.' };
+    // A dedicated client: opening a pairing link leaves the remote screen, which closes the
+    // shared client mid-pairing. The shared one is replaced afterwards for the new computer.
+    let remote: RemoteClient;
     try {
-      remote = await ensureClient();
+      remote = new RemoteClient(await factory(usePreferences.getState().localOnly), null);
     } catch (error) {
       return { ok: false, code: 'unreachable', message: `Could not start a secure connection: ${String(error)}` };
     }
-    if (!remote) return { ok: false, code: 'unreachable', message: 'Remote control is not available in this build.' };
     const result = await remote.pair(ticket, phoneName);
+    await remote.close().catch(() => undefined);
     if (!result.ok) return result;
+    await resetClient();
     const desktop: SavedDesktop = {
       address: result.value,
       name: desktopName.trim() || 'My computer',
@@ -148,7 +164,7 @@ export const useRemote = create<RemoteState>((set, get) => ({
       };
     }
     backoff.reset();
-    set({ desktop, phase: 'connecting', detail: null, notice: { tone: 'success', text: `Connected to ${desktop.name}.` } });
+    set({ desktop, phase: 'connecting', detail: null, skills: null, notice: { tone: 'success', text: `Connected to ${desktop.name}.` } });
     return { ok: true, value: null };
   },
 
@@ -166,8 +182,9 @@ export const useRemote = create<RemoteState>((set, get) => ({
     const view = await remote.inspect();
     if (view.ok) {
       backoff.reset();
-      let screenshot = get().screenshot;
-      if (usePreferences.getState().screenshots) {
+      // Never keep an old picture around: it would show a screen that is no longer there.
+      let screenshot: string | null = null;
+      if (pictureWanted || usePreferences.getState().screenshots) {
         const shot = await remote.screenshot();
         screenshot = shot.ok ? shot.value : null;
       }
@@ -196,6 +213,10 @@ export const useRemote = create<RemoteState>((set, get) => ({
     void resetClient();
   },
 
+  setPictureWanted(wanted) {
+    pictureWanted = wanted;
+  },
+
   async act(intent) {
     const remote = await ensureClient().catch(() => null);
     if (!remote) return false;
@@ -222,6 +243,17 @@ export const useRemote = create<RemoteState>((set, get) => ({
     return result.ok;
   },
 
+  async perform(task) {
+    const remote = await ensureClient().catch(() => null);
+    if (!remote) return false;
+    set({ working: true });
+    const result = await task(remote);
+    set({ working: false });
+    if (!result.ok) set({ notice: { tone: result.code === 'outcome_unknown' ? 'warning' : 'danger', text: result.message } });
+    void get().refresh();
+    return result.ok;
+  },
+
   async stop() {
     const remote = await ensureClient().catch(() => null);
     if (!remote) return false;
@@ -233,6 +265,26 @@ export const useRemote = create<RemoteState>((set, get) => ({
     return result.ok;
   },
 
+  async fetchSkills(force = false) {
+    if (get().skills && !force) return true;
+    if (fetchingSkills) return fetchingSkills;
+    fetchingSkills = (async () => {
+      const remote = await ensureClient().catch(() => null);
+      if (!remote) return false;
+      set({ working: true });
+      const result = await loadSkills(remote);
+      set({ working: false });
+      if (result.ok) set({ skills: result.value });
+      void get().refresh();
+      return result.ok;
+    })();
+    try {
+      return await fetchingSkills;
+    } finally {
+      fetchingSkills = null;
+    }
+  },
+
   async forget() {
     get().stopLive();
     await deleteDesktop();
@@ -242,6 +294,7 @@ export const useRemote = create<RemoteState>((set, get) => ({
       snapshot: null,
       screenshot: null,
       detail: null,
+      skills: null,
       notice: { tone: 'info', text: 'Forgotten on this phone. Also choose Forget on your computer to revoke access there.' },
     });
   },

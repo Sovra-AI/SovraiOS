@@ -129,6 +129,10 @@ export class RemoteClient {
         const hello = await this.exchange(connection.value, { op: 'hello' });
         let response: RemoteResponse | null;
         if (hello?.status === 'ready' && hello.version === PROTOCOL_VERSION) {
+          // Already paired (this phone forgot the computer, or a `paired` reply was lost).
+          // Still hand over the code so the desktop closes it instead of pausing control
+          // until it expires. Hello already proved access, so any refusal is ignored.
+          await this.exchange(connection.value, { op: 'pair', secret: ticket.secret, name: sanitizePhoneName(name) });
           response = { status: 'paired' };
         } else if (hello?.status === 'error' && hello.code === 'not_paired') {
           response = await this.exchange(connection.value, {

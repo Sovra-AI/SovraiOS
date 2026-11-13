@@ -61,30 +61,71 @@ export function actionableControls(snapshot: InspectResult): UiElement[] {
     .sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x);
 }
 
-/** Visible text that is not itself a control, for reading replies on the phone. */
-export function readableText(snapshot: InspectResult): UiElement[] {
+/**
+ * Visible text that is not itself a control, for reading replies on the phone.
+ * With `within`, only text whose box lies inside that element (the conversation).
+ */
+export function readableText(snapshot: InspectResult, within: UiElement | null = null): UiElement[] {
   return snapshot.elements
     .filter((element) => element.visible && kindOf(element) === 'content' && element.label?.trim())
+    .filter((element) => !within || contains(within, element))
     .sort((a, b) => a.bounds.y - b.bounds.y || a.bounds.x - b.bounds.x);
 }
 
-const COMPOSER_HINT = /(message|ask|chat|prompt|type|reply)/i;
+function contains(outer: UiElement, inner: UiElement): boolean {
+  const a = outer.bounds;
+  const b = inner.bounds;
+  return b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
+}
+
+/** Sovra's chat transcript: the visible `Log` region (labelled "Conversation"). */
+export function conversationArea(snapshot: InspectResult): UiElement | null {
+  const logs = snapshot.elements.filter((element) => element.visible && element.role === 'Log' && element.bounds.width > 0 && element.bounds.height > 0);
+  return logs.find((element) => element.label?.trim().toLowerCase() === 'conversation') ?? logs[0] ?? null;
+}
+
+const COMPOSER_HINT = /(message|ask|prompt|reply)/i;
+// Sidebar search ("Search chats") and filters are text inputs too; typing a message there is wrong.
+const NOT_COMPOSER = /(search|filter|find)/i;
 
 /**
- * The chat box: the visible text input whose label reads like a composer, or else
- * the lowest text input in the window (Sovra docks the composer at the bottom).
+ * The chat box. Sovra's composer is a multiline input labelled "Message Sovra";
+ * prefer multiline inputs, then composer-like labels. Any other box — search, filters,
+ * form fields like "What should the group be called?" — is never the chat box.
  */
 export function findComposer(snapshot: InspectResult): UiElement | null {
   const inputs = snapshot.elements.filter(
-    (element) => element.visible && element.disabled !== true && kindOf(element) === 'text',
+    (element) =>
+      element.visible &&
+      element.disabled !== true &&
+      kindOf(element) === 'text' &&
+      element.role !== 'SearchInput' &&
+      !(element.label && NOT_COMPOSER.test(element.label)),
   );
   if (inputs.length === 0) return null;
+  const multiline = inputs.filter((element) => element.role === 'MultilineTextInput');
   const hinted = inputs.filter((element) => element.label && COMPOSER_HINT.test(element.label));
-  const pool = hinted.length > 0 ? hinted : inputs;
+  const pool = multiline.length > 0 ? multiline : hinted;
+  if (pool.length === 0) return null;
   return pool.reduce((lowest, element) => (element.bounds.y > lowest.bounds.y ? element : lowest));
 }
 
-const STOP_HINT = /^(stop|stop (generating|response|this|working|run))/i;
+/** Sovra's sidebar "Chat" destination (not the "Chats" conversation filter). */
+export function findChatNavigation(snapshot: InspectResult): UiElement | null {
+  return (
+    snapshot.elements.find(
+      (element) =>
+        element.visible &&
+        element.disabled !== true &&
+        kindOf(element) === 'action' &&
+        element.label?.trim().toLowerCase() === 'chat',
+    ) ?? null
+  );
+}
+
+// Whole-label match: Sovra has many "Stop …" buttons ("Stop phone control", "Stop sharing")
+// that must never be pressed as "stop work". Composer: "Stop generating" / "إيقاف التوليد".
+const STOP_HINT = /^(stop|stop (generating|response|working)|إيقاف التوليد)$/i;
 
 /** The real "stop" control of ongoing work, if one is visible. */
 export function findStop(snapshot: InspectResult): UiElement | null {

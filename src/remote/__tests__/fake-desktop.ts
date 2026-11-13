@@ -4,7 +4,7 @@
  * revisions required for mutations, and an idle-closed connection.
  */
 import { type DesktopConnection, type PhoneTransport, TransportFailure } from '../transport';
-import type { PeerAddress, RemoteRequest, UiElement } from '../wire';
+import type { InspectResult, PeerAddress, RemoteRequest, UiElement } from '../wire';
 
 export const DESKTOP = '01'.repeat(32);
 export const SECRET = '02'.repeat(32);
@@ -39,6 +39,8 @@ export class FakeDesktop {
   dropReplyFor: string | null = null;
   unreachable = false;
   connections: FakeConnection[] = [];
+  /** Lets a test change the window in response to delivered input (e.g. navigation). */
+  onDeliver: ((input: Delivered) => void) | null = null;
 
   element(target: string, label: string | null, role: string | null, y = 0): UiElement {
     const element: UiElement = {
@@ -54,6 +56,18 @@ export class FakeDesktop {
     };
     this.elements.push(element);
     return element;
+  }
+
+  /** What Inspect would return right now. */
+  snapshot(): InspectResult {
+    return {
+      elements: this.elements,
+      total: this.elements.length,
+      truncated: false,
+      appearance: 'dark',
+      interface_scale_percent: 100,
+      revision: `r${this.revision}`,
+    };
   }
 
   transport(): PhoneTransport {
@@ -167,6 +181,7 @@ class FakeConnection implements DesktopConnection {
           return this.error('outcome_unknown', 'Target not found');
         }
         desktop.delivered.push({ ...action } as Delivered);
+        desktop.onDeliver?.({ ...action } as Delivered);
         desktop.revision += 1;
         return { status: 'result', value: { input_delivered: true, next: 'Inspect to verify the result.' } };
       }

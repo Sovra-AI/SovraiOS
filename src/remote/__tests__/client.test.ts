@@ -1,4 +1,4 @@
-import { planTyping, sendChatMessage, stopWork } from '../chat';
+import { planTyping, sendChatMessage, stopWork, typeInto } from '../chat';
 import { RemoteClient, sanitizePhoneName } from '../client';
 import { decodeTicket } from '../ticket';
 import { FakeDesktop, SECRET, desktopAddress } from './fake-desktop';
@@ -30,6 +30,23 @@ describe('RemoteClient', () => {
     expect(view.ok).toBe(true);
     const ops = desktop.requests.map((r) => r.operation.op);
     expect(ops.slice(-2)).toEqual(['hello', 'control']);
+  });
+
+  it('uses up a fresh code when an already-paired phone scans it again', async () => {
+    const desktop = new FakeDesktop();
+    desktop.paired.add('ab'.repeat(32));
+    const client = new RemoteClient(desktop.transport(), null);
+    expect((await client.pair(ticket, 'Pixel')).ok).toBe(true);
+    expect(desktop.requests.map((r) => r.operation.op)).toEqual(['hello', 'pair']);
+    expect(desktop.invitation).toBeNull();
+  });
+
+  it('stays paired when the code is already used or refused after Hello', async () => {
+    const desktop = new FakeDesktop();
+    desktop.paired.add('ab'.repeat(32));
+    desktop.invitation = null;
+    const client = new RemoteClient(desktop.transport(), null);
+    expect(await client.pair(ticket, 'Pixel')).toEqual({ ok: true, value: desktopAddress });
   });
 
   it('reports a wrong invitation and never treats unreachable as revoked', async () => {
@@ -136,11 +153,101 @@ describe('chat helpers', () => {
     expect(result.ok).toBe(true);
     expect(desktop.delivered).toEqual([
       { action: 'click', target: 'composer' },
+      { action: 'key', key: 'secondary-a' },
+      { action: 'key', key: 'backspace' },
       { action: 'type', text: 'Hello there' },
       { action: 'key', key: 'shift-enter' },
       { action: 'type', text: 'second line' },
       { action: 'key', key: 'enter' },
     ]);
+  });
+
+  it('runs a bare /skill instead of only completing its name', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('composer', 'Message Sovra', 'MultilineTextInput', 500);
+    expect((await sendChatMessage(pairedClient(desktop), '/new')).ok).toBe(true);
+    expect(desktop.delivered.slice(-2)).toEqual([
+      { action: 'type', text: '/new ' },
+      { action: 'key', key: 'enter' },
+    ]);
+  });
+
+  it('types a /skill with words after it unchanged', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('composer', 'Message Sovra', 'MultilineTextInput', 500);
+    expect((await sendChatMessage(pairedClient(desktop), '/table three plants')).ok).toBe(true);
+    expect(desktop.delivered).toContainEqual({ action: 'type', text: '/table three plants' });
+  });
+
+  it('types into a chosen field on the computer without pressing Enter', async () => {
+    const desktop = new FakeDesktop();
+    const field = desktop.element('task', 'Task name', 'TextInput', 372);
+    const client = pairedClient(desktop);
+    expect((await typeInto(client, field, 'Morning briefing')).ok).toBe(true);
+    expect(desktop.delivered).toEqual([
+      { action: 'click', target: 'task' },
+      { action: 'type', text: 'Morning briefing' },
+    ]);
+  });
+
+  it('never mistakes a form field for the chat box', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('group-name', '1. What should the group be called?', 'TextInput', 336);
+    desktop.element('device', '3. What do you call this computer?', 'TextInput', 520);
+    desktop.element('nav-chat', 'Chat', 'Button', 120);
+    desktop.onDeliver = (input) => {
+      if (input.action === 'click' && input.target === 'nav-chat') desktop.element('composer', 'Message Sovra', 'MultilineTextInput', 700);
+    };
+    expect((await sendChatMessage(pairedClient(desktop), 'hi')).ok).toBe(true);
+    expect(desktop.delivered[0]).toEqual({ action: 'click', target: 'nav-chat' });
+    expect(desktop.delivered[1]).toEqual({ action: 'click', target: 'composer' });
+  });
+
+  it('never types into a search box', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('search', 'Search chats', 'TextInput', 500);
+    const client = pairedClient(desktop);
+    const result = await sendChatMessage(client, 'hi');
+    expect(result.ok).toBe(false);
+    expect(desktop.delivered).toEqual([]);
+  });
+
+  it('prefers Sovra’s composer over other text inputs', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('search', 'Search chats', 'TextInput', 800);
+    desktop.element('composer', 'Message Sovra', 'MultilineTextInput', 700);
+    const client = pairedClient(desktop);
+    expect((await sendChatMessage(client, 'hi')).ok).toBe(true);
+    expect(desktop.delivered[0]).toEqual({ action: 'click', target: 'composer' });
+  });
+
+  it('opens Chat on the computer when no chat box is showing', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('search', 'Search chats', 'TextInput', 500);
+    desktop.element('nav-chat', 'Chat', 'Button', 120);
+    desktop.onDeliver = (input) => {
+      if (input.action === 'click' && input.target === 'nav-chat') desktop.element('composer', 'Message Sovra', 'MultilineTextInput', 700);
+    };
+    const client = pairedClient(desktop);
+    const result = await sendChatMessage(client, 'hi');
+    expect(result.ok).toBe(true);
+    expect(desktop.delivered).toEqual([
+      { action: 'click', target: 'nav-chat' },
+      { action: 'click', target: 'composer' },
+      { action: 'key', key: 'secondary-a' },
+      { action: 'key', key: 'backspace' },
+      { action: 'type', text: 'hi' },
+      { action: 'key', key: 'enter' },
+    ]);
+  });
+
+  it('stops after opening Chat if there is still no chat box', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('nav-chat', 'Chat', 'Button', 120);
+    const client = pairedClient(desktop);
+    const result = await sendChatMessage(client, 'hi');
+    expect(result).toMatchObject({ ok: false, failure: { stage: 'focus', partial: false } });
+    expect(desktop.delivered).toEqual([{ action: 'click', target: 'nav-chat' }]);
   });
 
   it('explains a missing chat box instead of typing blindly', async () => {
@@ -156,6 +263,17 @@ describe('chat helpers', () => {
     const client = pairedClient(desktop);
     expect((await stopWork(client)).ok).toBe(true);
     desktop.element('stop', 'Stop', 'Button');
+    expect((await stopWork(client)).ok).toBe(true);
+    expect(desktop.delivered).toEqual([{ action: 'key', key: 'escape' }, { action: 'click', target: 'stop' }]);
+  });
+
+  it('never mistakes other “Stop …” buttons for stopping work', async () => {
+    const desktop = new FakeDesktop();
+    desktop.element('phone-off', 'Stop phone control', 'Button');
+    desktop.element('unshare', 'Stop sharing', 'Button');
+    const client = pairedClient(desktop);
+    expect((await stopWork(client)).ok).toBe(true);
+    desktop.element('stop', 'Stop generating', 'Button');
     expect((await stopWork(client)).ok).toBe(true);
     expect(desktop.delivered).toEqual([{ action: 'key', key: 'escape' }, { action: 'click', target: 'stop' }]);
   });

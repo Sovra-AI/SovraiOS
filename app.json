@@ -14,6 +14,7 @@
     "backgroundColor": "#111216",
     "ios": {
       "bundleIdentifier": "ai.sovra.remote",
+      "appleTeamId": "9J74Y6RR85",
       "supportsTablet": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -42,6 +43,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "sovra-remote",
       [
         "expo-camera",
         {

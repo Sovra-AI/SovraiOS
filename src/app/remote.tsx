@@ -1,25 +1,30 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ControlsList, ConversationView, MirrorView } from '@/components/remote-views';
-import { Button, Logo, NoticeBanner, type StatusTone, StatusPill, Surface, Text, inputStyle } from '@/components/ui';
-import { findStop, kindOf } from '@/remote/elements';
+import { ChatPanel } from '@/components/chat-panel';
+import { ComputerPanel } from '@/components/computer-panel';
+import { ChatsView, SkillsView } from '@/components/desktop-views';
+import { Button, NoticeBanner, Surface, Text } from '@/components/ui';
+import { NEW_CHAT_LABEL, transcript } from '@/remote/desktop';
+import { findComposer } from '@/remote/elements';
+import { moreChats, openChatPage, openConversation, searchChats } from '@/remote/navigate';
+import type { Skill } from '@/remote/skills';
 import type { UiElement } from '@/remote/wire';
 import { type Phase, useRemote } from '@/state/remote';
 import { useTheme } from '@/theme';
 
-const STATUS: Record<Phase, { tone: StatusTone; label: string }> = {
-  loading: { tone: 'neutral', label: 'Starting' },
-  unpaired: { tone: 'neutral', label: 'Not paired' },
-  connecting: { tone: 'brand', label: 'Connecting' },
-  connected: { tone: 'success', label: 'Connected' },
-  unreachable: { tone: 'warning', label: 'Offline' },
-  disabled: { tone: 'warning', label: 'Phone control off' },
-  busy: { tone: 'warning', label: 'Busy' },
-  revoked: { tone: 'danger', label: 'Forgotten' },
-  incompatible: { tone: 'danger', label: 'Update needed' },
+const STATUS: Record<Phase, { color: 'success' | 'warning' | 'danger' | 'mutedText' | 'link'; label: string }> = {
+  loading: { color: 'mutedText', label: 'Starting' },
+  unpaired: { color: 'mutedText', label: 'Not paired' },
+  connecting: { color: 'link', label: 'Connecting…' },
+  connected: { color: 'success', label: 'Connected' },
+  unreachable: { color: 'warning', label: 'Can’t reach your computer' },
+  disabled: { color: 'warning', label: 'Phone control is off' },
+  busy: { color: 'warning', label: 'Busy' },
+  revoked: { color: 'danger', label: 'Forgotten' },
+  incompatible: { color: 'danger', label: 'Update needed' },
 };
 
 /** Plain-language recovery for each state; desktop messages are shown, never parsed. */
@@ -27,33 +32,33 @@ const RECOVERY: Partial<Record<Phase, { title: string; body: string }>> = {
   connecting: { title: 'Connecting to your computer…', body: 'This can take a few seconds on mobile data.' },
   unreachable: {
     title: 'Open Sovra on your computer',
-    body: 'Your computer must be awake, online and running Sovra, with Skills → “Use Sovra from your phone” switched on (it turns off whenever Sovra restarts). We keep trying while this screen is open.',
+    body: 'Make sure your computer is awake and online, Sovra is open, and “Use Sovra from your phone” is switched on in Sovra (it switches off whenever Sovra restarts). We keep trying while this screen is open.',
   },
   disabled: {
-    title: 'Start remote control on your computer',
-    body: 'In Sovra, go to Skills → “Use Sovra from your phone”. For your safety it switches off whenever Sovra restarts.',
+    title: 'Turn on phone control',
+    body: 'In Sovra on your computer, open Skills and choose “Use Sovra from your phone”. For your safety it switches off whenever Sovra restarts.',
   },
-  busy: { title: 'Sovra is busy', body: 'Another phone may be in control, or a new phone is being paired. Try again shortly.' },
-  incompatible: { title: 'Update needed', body: 'This app and Sovra on your computer speak different versions. Update both.' },
+  busy: { title: 'Sovra is busy', body: 'Another phone may be in control, or a new phone is being paired. Try again in a moment.' },
+  incompatible: { title: 'Update needed', body: 'This app and Sovra on your computer are different versions. Update both.' },
 };
 
-const KEYS: { label: string; key: string; hint: string }[] = [
-  { label: 'Enter', key: 'enter', hint: 'Presses Enter' },
-  { label: 'Esc', key: 'escape', hint: 'Presses Escape' },
-  { label: 'Tab', key: 'tab', hint: 'Moves to the next control' },
-  { label: '⌫', key: 'backspace', hint: 'Deletes one character' },
-  { label: '↑', key: 'up', hint: 'Arrow up' },
-  { label: '↓', key: 'down', hint: 'Arrow down' },
+type Tab = 'chat' | 'chats' | 'skills' | 'computer';
+
+const TABS: { tab: Tab; label: string }[] = [
+  { tab: 'chat', label: 'Chat' },
+  { tab: 'chats', label: 'Chats' },
+  { tab: 'skills', label: 'Skills' },
+  { tab: 'computer', label: 'Computer' },
 ];
 
-type Mode = 'chat' | 'screen' | 'controls';
+const QUIET_NOTICE_MS = 5000;
+const SKILL_PAGE_GRACE_MS = 15000;
 
 export default function Remote() {
   const theme = useTheme();
-  const { phase, desktop, snapshot, screenshot, detail, notice, working } = useRemote();
-  const [mode, setMode] = useState<Mode>('chat');
-  const [draft, setDraft] = useState('');
-  const [focused, setFocused] = useState(false);
+  const { phase, desktop, snapshot, screenshot, detail, notice, working, skills } = useRemote();
+  const [tab, setTab] = useState<Tab>('chat');
+  const [chosen, setChosen] = useState<Skill | null>(null);
 
   // Foreground only: start on focus, stop on blur or when the app is backgrounded.
   useFocusEffect(
@@ -75,36 +80,96 @@ export default function Remote() {
     if (phase === 'revoked' || phase === 'unpaired') router.replace('/pair');
   }, [phase]);
 
-  const stop = useMemo(() => (snapshot ? findStop(snapshot) : null), [snapshot]);
+  // Good news and tips fade on their own; problems stay until dismissed.
+  useEffect(() => {
+    if (!notice || notice.tone === 'danger' || notice.tone === 'warning') return;
+    const timer = setTimeout(() => useRemote.getState().dismissNotice(), QUIET_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
   const live = phase === 'connected' && snapshot !== null;
+  const hasComposer = useMemo(() => (snapshot ? findComposer(snapshot) !== null : false), [snapshot]);
+  const labelled = useMemo(() => (snapshot ? transcript(snapshot).messages.length > 0 : false), [snapshot]);
+
+  // Pictures only for the Computer tab, or the Chat tab when messages are not labelled.
+  useEffect(() => {
+    useRemote.getState().setPictureWanted(tab === 'computer' || (tab === 'chat' && !labelled));
+    return () => useRemote.getState().setPictureWanted(false);
+  }, [tab, labelled]);
+
+  // The Chat tab always shows Sovra's chat: bring it up on the computer when another page
+  // is open. Once per visit, so a failure is reported instead of retried in a loop.
+  const tried = useRef(false);
+  // A `/` command that opens a page (Models, Schedules…) leaves the chat on purpose.
+  const skillSentAt = useRef(0);
+  useEffect(() => {
+    if (tab !== 'chat' || hasComposer) {
+      tried.current = false;
+      return;
+    }
+    if (!live || working || tried.current || Date.now() - skillSentAt.current < SKILL_PAGE_GRACE_MS) return;
+    tried.current = true;
+    void useRemote.getState().perform(openChatPage);
+  }, [tab, live, hasComposer, working]);
+
+  // The Skills tab lists Sovra's skills, read once from the computer.
+  useEffect(() => {
+    if (tab === 'skills' && live && !skills) void useRemote.getState().fetchSkills();
+    // Only when the tab is chosen or the connection comes up, not on every refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, live]);
+
   const status = STATUS[phase];
   const recovery = RECOVERY[phase];
+  const busy = !live || working;
 
-  const press = (element: UiElement) => {
-    void useRemote.getState().act({ kind: 'click', element });
-    if (kindOf(element) === 'text') setMode('chat');
-  };
-  const scroll = (element: UiElement, lines: number) => void useRemote.getState().act({ kind: 'scroll', element, lines });
-
-  const send = async () => {
-    const text = draft;
-    if (!text.trim()) return;
-    const sent = await useRemote.getState().send(text);
-    if (sent) setDraft('');
-  };
+  const scroll = useCallback((element: UiElement, lines: number) => void useRemote.getState().act({ kind: 'scroll', element, lines }), []);
+  const openChat = useCallback((title: string) => {
+    setTab('chat');
+    void useRemote.getState().perform((client) => openConversation(client, title));
+  }, []);
+  const newChat = useCallback(() => {
+    setTab('chat');
+    void useRemote.getState().perform(async (client) => {
+      const page = await openChatPage(client);
+      if (!page.ok) return page;
+      const button = page.value.elements.find((element) => element.visible && element.label === NEW_CHAT_LABEL);
+      if (!button) return { ok: false, code: 'invalid_request', message: 'Could not start a new chat on your computer.' } as const;
+      return client.act({ kind: 'click', element: button });
+    });
+  }, []);
+  const search = useCallback((query: string) => void useRemote.getState().perform((client) => searchChats(client, query)), []);
+  const more = useCallback(() => void useRemote.getState().perform(moreChats), []);
+  const pickSkill = useCallback((skill: Skill) => {
+    setChosen(skill);
+    setTab('chat');
+  }, []);
+  const chosenUsed = useCallback(() => setChosen(null), []);
+  const openPage = useCallback((page: UiElement) => {
+    // Sovra's chat lives in the Chat tab.
+    if (page.label?.trim().toLowerCase() === 'chat') setTab('chat');
+    void useRemote.getState().act({ kind: 'click', element: page });
+  }, []);
+  const isChatBox = useCallback((element: UiElement) => (snapshot ? findComposer(snapshot)?.target === element.target : false), [snapshot]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ flex: 1, padding: theme.space.medium, gap: theme.space.medium }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.small + 4 }}>
-            <Logo size={theme.layout.logoSmall} />
-            <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, paddingHorizontal: theme.space.medium, paddingTop: theme.space.small, paddingBottom: theme.space.small, gap: theme.space.small + 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.small }}>
+            <View style={{ flex: 1 }}>
               <Text variant="sectionTitle" numberOfLines={1}>
                 {desktop?.name ?? 'Your computer'}
               </Text>
-              <StatusPill tone={status.tone} label={status.label} />
+              <View accessible accessibilityLabel={`Status: ${status.label}`} style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.snug }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors[status.color] }} />
+                <Text variant="caption" tone="secondary">
+                  {status.label}
+                </Text>
+                {working ? <ActivityIndicator size="small" color={theme.colors.ring} style={{ transform: [{ scale: 0.7 }] }} /> : null}
+              </View>
             </View>
+            {tab === 'chat' && live ? <Button label="New chat" size="compact" variant="ghost" onPress={newChat} disabled={busy} /> : null}
             <Button label="Settings" size="compact" variant="ghost" onPress={() => router.push('/settings')} />
           </View>
 
@@ -119,9 +184,7 @@ export default function Remote() {
                   {detail}
                 </Text>
               ) : null}
-              {phase !== 'connecting' ? (
-                <Button label="Try again now" variant="primary" onPress={() => useRemote.getState().startLive()} />
-              ) : null}
+              {phase !== 'connecting' ? <Button label="Try again" variant="primary" onPress={() => useRemote.getState().startLive()} /> : null}
             </Surface>
           ) : null}
 
@@ -129,105 +192,60 @@ export default function Remote() {
             <>
               <View
                 accessibilityRole="tablist"
-                style={{ flexDirection: 'row', padding: 3, borderRadius: theme.radius.button, backgroundColor: theme.colors.hover }}>
-                {(['chat', 'screen', 'controls'] as Mode[]).map((value) => (
+                style={{ flexDirection: 'row', padding: 3, borderRadius: theme.radius.button + 2, backgroundColor: theme.colors.hover }}>
+                {TABS.map(({ tab: value, label }) => (
                   <Pressable
                     key={value}
                     accessibilityRole="tab"
-                    accessibilityState={{ selected: mode === value }}
-                    onPress={() => setMode(value)}
+                    accessibilityState={{ selected: tab === value }}
+                    onPress={() => setTab(value)}
                     style={{
                       flex: 1,
-                      minHeight: theme.layout.compactControl,
+                      minHeight: theme.layout.control - 4,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: theme.radius.button - 2,
-                      backgroundColor: mode === value ? theme.colors.surface : 'transparent',
+                      borderRadius: theme.radius.button,
+                      backgroundColor: tab === value ? theme.colors.surface : 'transparent',
                     }}>
-                    <Text variant="label" tone={mode === value ? 'primary' : 'secondary'}>
-                      {value === 'chat' ? 'Chat' : value === 'screen' ? 'Screen' : 'Controls'}
+                    <Text variant="label" tone={tab === value ? 'primary' : 'secondary'}>
+                      {label}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <View style={{ flex: 1, opacity: live ? 1 : 0.5 }}>
-                {mode === 'chat' ? <ConversationView snapshot={snapshot} onScroll={scroll} disabled={!live || working} /> : null}
-                {mode === 'screen' ? (
-                  <View style={{ gap: theme.space.small }}>
-                    <MirrorView snapshot={snapshot} screenshot={screenshot} onPress={press} onScroll={scroll} disabled={!live || working} />
-                    <Text variant="caption" tone="muted">
-                      Tap any outlined control to press it on your computer.
-                    </Text>
-                  </View>
-                ) : null}
-                {mode === 'controls' ? <ControlsList snapshot={snapshot} onPress={press} onScroll={scroll} disabled={!live || working} /> : null}
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: theme.space.compact, flexWrap: 'wrap' }}>
-                {KEYS.map((entry) => (
-                  <Button
-                    key={entry.key}
-                    label={entry.label}
-                    size="compact"
-                    accessibilityHint={entry.hint}
-                    disabled={!live || working}
-                    onPress={() => void useRemote.getState().act({ kind: 'key', key: entry.key })}
-                    style={{ flexGrow: 1 }}
-                  />
-                ))}
-              </View>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-end',
-                  gap: theme.space.small,
-                  padding: theme.space.small,
-                  borderRadius: theme.radius.panel,
-                  borderWidth: focused ? 1.5 : theme.layout.hairline,
-                  borderColor: focused ? theme.colors.composerFocusBorder : theme.colors.composerBorder,
-                  backgroundColor: theme.colors.composerBackground,
-                  boxShadow: focused ? `0 0 15px ${theme.colors.composerFocusBorder}` : undefined,
-                }}>
-                <TextInput
-                  value={draft}
-                  onChangeText={setDraft}
-                  placeholder="Message Sovra on your computer"
-                  placeholderTextColor={theme.colors.mutedText}
-                  multiline
-                  onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
-                  accessibilityLabel="Message to send to Sovra"
-                  style={{ ...inputStyle(theme), borderWidth: 0, flex: 1, maxHeight: 140, paddingTop: 10, backgroundColor: 'transparent' }}
-                />
-                {stop ? (
-                  <Button
-                    label="Stop"
-                    size="compact"
-                    accessibilityHint="Stops what Sovra is doing"
-                    onPress={() => void useRemote.getState().stop()}
-                    style={{ backgroundColor: theme.colors.stopBackground, borderRadius: theme.radius.pill }}
+              <View style={{ flex: 1, opacity: live ? 1 : 0.5 }} pointerEvents={live ? 'auto' : 'none'}>
+                {tab === 'chat' ? (
+                  <ChatPanel
+                    snapshot={snapshot}
+                    screenshot={screenshot}
+                    live={live}
+                    chosen={chosen}
+                    onChosenUsed={chosenUsed}
+                    onBrowseSkills={() => setTab('skills')}
+                    onSkillSent={() => {
+                      skillSentAt.current = Date.now();
+                    }}
+                    onOpenedPage={() => {
+                      skillSentAt.current = 0;
+                      setTab('computer');
+                    }}
+                    onScroll={scroll}
                   />
                 ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Send"
-                  accessibilityState={{ disabled: !live || !draft.trim() || working }}
-                  disabled={!live || !draft.trim() || working}
-                  onPress={send}
-                  style={{
-                    height: theme.layout.compactControl,
-                    paddingHorizontal: theme.space.medium,
-                    borderRadius: theme.radius.pill,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: draft.trim() && live ? theme.colors.sendReadyBackground : theme.colors.hover,
-                  }}>
-                  <Text variant="label" style={{ color: draft.trim() && live ? theme.colors.sendReadyForeground : theme.colors.mutedText }}>
-                    {working ? 'Sending…' : 'Send'}
-                  </Text>
-                </Pressable>
+                {tab === 'chats' ? <ChatsView snapshot={snapshot} onOpen={openChat} onNew={newChat} onSearch={search} onMore={more} disabled={busy} /> : null}
+                {tab === 'skills' ? <SkillsView skills={skills} onUse={pickSkill} onReload={() => void useRemote.getState().fetchSkills(true)} disabled={busy} /> : null}
+                {tab === 'computer' ? (
+                  <ComputerPanel
+                    snapshot={snapshot}
+                    screenshot={screenshot}
+                    disabled={busy}
+                    onOpenPage={openPage}
+                    onChatBox={() => setTab('chat')}
+                    isChatBox={isChatBox}
+                    onScroll={scroll}
+                  />
+                ) : null}
               </View>
             </>
           ) : null}

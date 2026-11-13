@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, View } from 'react-native';
 
@@ -33,6 +33,7 @@ export default function Settings() {
   const desktop = useRemote((state) => state.desktop);
   const preferences = usePreferences();
   const [phoneId, setPhoneId] = useState<string | null>(null);
+  const [advanced, setAdvanced] = useState(false);
 
   useEffect(() => {
     phoneSecret()
@@ -65,71 +66,85 @@ export default function Settings() {
     );
 
   return (
-    <ScrollView style={{ backgroundColor: theme.colors.canvas }} contentContainerStyle={{ padding: theme.space.medium, gap: theme.space.large }}>
-      <Surface>
-        <Text variant="sectionTitle">Paired computer</Text>
-        {desktop ? (
+    <>
+      <Stack.Screen options={{ headerRight: () => <Button label="Done" size="compact" variant="ghost" onPress={() => router.back()} /> }} />
+      <ScrollView style={{ backgroundColor: theme.colors.canvas }} contentContainerStyle={{ padding: theme.space.medium, gap: theme.space.large }}>
+        <Surface>
+          <Text variant="sectionTitle">Your computer</Text>
+          {desktop ? (
+            <>
+              <Row title={desktop.name} detail={`Paired ${new Date(desktop.pairedAt).toLocaleDateString()}`} />
+              <Button label="Forget this computer" variant="danger" onPress={forget} />
+            </>
+          ) : (
+            <Text tone="secondary">None yet.</Text>
+          )}
+        </Surface>
+
+        <Surface>
+          <Text variant="sectionTitle">Appearance</Text>
+          <View style={{ flexDirection: 'row', padding: 3, borderRadius: theme.radius.button, backgroundColor: theme.colors.hover }}>
+            {(['system', 'dark', 'light'] as Appearance[]).map((value) => (
+              <Pressable
+                key={value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: preferences.appearance === value }}
+                onPress={() => preferences.set({ appearance: value })}
+                style={{
+                  flex: 1,
+                  minHeight: theme.layout.compactControl,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: theme.radius.button - 2,
+                  backgroundColor: preferences.appearance === value ? theme.colors.surface : 'transparent',
+                }}>
+                <Text variant="label" tone={preferences.appearance === value ? 'primary' : 'secondary'}>
+                  {value === 'system' ? 'System' : value === 'dark' ? 'Dark' : 'Light'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Surface>
+
+        <Button
+          label={advanced ? 'Hide advanced settings' : 'Advanced settings'}
+          variant="ghost"
+          onPress={() => setAdvanced(!advanced)}
+          accessibilityState={{ expanded: advanced }}
+        />
+        {advanced ? (
           <>
-            <Row title={desktop.name} detail={`Key ${short(desktop.address.device)} · paired ${new Date(desktop.pairedAt).toLocaleDateString()}`} />
-            <Button label="Forget this computer" variant="danger" onPress={forget} />
-          </>
-        ) : (
-          <Text tone="secondary">None yet.</Text>
-        )}
-      </Surface>
+            <Surface>
+              <Text variant="sectionTitle">Connection</Text>
+              <Row title="Show screenshots" detail="Uses more data. Not every computer can capture its window.">
+                <Switch
+                  value={preferences.screenshots}
+                  onValueChange={(screenshots) => toggle({ screenshots })}
+                  trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
+                  accessibilityLabel="Show screenshots"
+                />
+              </Row>
+              <Row title="Same Wi-Fi only" detail="For testing: no relays, so mobile data will not work.">
+                <Switch
+                  value={preferences.localOnly}
+                  onValueChange={(localOnly) => toggle({ localOnly })}
+                  trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
+                  accessibilityLabel="Same Wi-Fi only"
+                />
+              </Row>
+            </Surface>
 
-      <Surface>
-        <Text variant="sectionTitle">Appearance</Text>
-        <View style={{ flexDirection: 'row', padding: 3, borderRadius: theme.radius.button, backgroundColor: theme.colors.hover }}>
-          {(['system', 'dark', 'light'] as Appearance[]).map((value) => (
-            <Pressable
-              key={value}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: preferences.appearance === value }}
-              onPress={() => preferences.set({ appearance: value })}
-              style={{
-                flex: 1,
-                minHeight: theme.layout.compactControl,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: theme.radius.button - 2,
-                backgroundColor: preferences.appearance === value ? theme.colors.surface : 'transparent',
-              }}>
-              <Text variant="label" tone={preferences.appearance === value ? 'primary' : 'secondary'}>
-                {value === 'system' ? 'System' : value === 'dark' ? 'Dark' : 'Light'}
+            <Surface>
+              <Text variant="sectionTitle">This phone</Text>
+              <Row title="Phone key" detail={phoneId ? short(phoneId) : 'Created on first connection'} />
+              {desktop ? <Row title="Computer key" detail={short(desktop.address.device)} /> : null}
+              <Text variant="caption" tone="muted">
+                The private key never leaves this phone. Your computer recognises the phone by this key, not by its name.
               </Text>
-            </Pressable>
-          ))}
-        </View>
-      </Surface>
-
-      <Surface>
-        <Text variant="sectionTitle">Connection</Text>
-        <Row title="Show screenshots" detail="Uses more data. Not every computer can capture its window.">
-          <Switch
-            value={preferences.screenshots}
-            onValueChange={(screenshots) => toggle({ screenshots })}
-            trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
-            accessibilityLabel="Show screenshots"
-          />
-        </Row>
-        <Row title="Same Wi-Fi only" detail="For testing: no relays, so mobile data will not work.">
-          <Switch
-            value={preferences.localOnly}
-            onValueChange={(localOnly) => toggle({ localOnly })}
-            trackColor={{ true: theme.colors.primary, false: theme.colors.controlBorder }}
-            accessibilityLabel="Same Wi-Fi only"
-          />
-        </Row>
-      </Surface>
-
-      <Surface>
-        <Text variant="sectionTitle">This phone</Text>
-        <Row title="Phone key" detail={phoneId ? short(phoneId) : 'Created on first connection'} />
-        <Text variant="caption" tone="muted">
-          The private key never leaves this phone. Your computer recognises the phone by this key, not by its name.
-        </Text>
-      </Surface>
-    </ScrollView>
+            </Surface>
+          </>
+        ) : null}
+      </ScrollView>
+    </>
   );
 }

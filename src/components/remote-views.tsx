@@ -7,7 +7,8 @@ import { Image } from 'expo-image';
 import { memo, useMemo, useState } from 'react';
 import { FlatList, type LayoutChangeEvent, Pressable, ScrollView, View } from 'react-native';
 
-import { actionableControls, describe, humanRole, kindOf, readableText, windowSize } from '@/remote/elements';
+import { pageFirst } from '@/remote/desktop';
+import { actionableControls, conversationArea, describe, kindOf, readableText, windowSize } from '@/remote/elements';
 import type { InspectResult, UiElement } from '@/remote/wire';
 import { useTheme } from '@/theme';
 
@@ -24,8 +25,12 @@ interface ViewProps {
 export const MirrorView = memo(function MirrorView({ snapshot, screenshot, onPress, disabled }: ViewProps & { screenshot: string | null }) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
+  // Width:height of the screenshot, i.e. the real window. Controls scrolled off-screen on
+  // the computer still report bounds, so their extent overstates the window's height.
+  const [aspect, setAspect] = useState<number | null>(null);
   const size = useMemo(() => windowSize(snapshot), [snapshot]);
   const scale = width > 0 ? width / size.width : 0;
+  const height = screenshot && aspect ? width / aspect : size.height * scale;
   const controls = useMemo(
     () =>
       snapshot.elements
@@ -42,7 +47,7 @@ export const MirrorView = memo(function MirrorView({ snapshot, screenshot, onPre
       accessibilityLabel="Picture of the Sovra window on your computer"
       style={{
         width: '100%',
-        height: scale ? size.height * scale : 240,
+        height: scale ? height : 240,
         borderRadius: theme.radius.card,
         overflow: 'hidden',
         backgroundColor: theme.colors.surface,
@@ -50,7 +55,12 @@ export const MirrorView = memo(function MirrorView({ snapshot, screenshot, onPre
         borderColor: theme.colors.border,
       }}>
       {screenshot ? (
-        <Image source={{ uri: `data:image/png;base64,${screenshot}` }} style={{ position: 'absolute', inset: 0 }} contentFit="fill" />
+        <Image
+          source={{ uri: `data:image/png;base64,${screenshot}` }}
+          onLoad={(event) => setAspect(event.source.width / event.source.height)}
+          style={{ position: 'absolute', inset: 0 }}
+          contentFit="fill"
+        />
       ) : (
         text.map((element) => (
           <View
@@ -109,10 +119,24 @@ export const MirrorView = memo(function MirrorView({ snapshot, screenshot, onPre
   );
 });
 
-/** Every labelled control, in reading order, at full touch size. */
+/** What a person needs to know about a control, in plain words (nothing for an ordinary button). */
+function plainState(element: UiElement): string {
+  const kind = kindOf(element);
+  return [
+    kind === 'text' ? 'Tap to type here' : null,
+    kind === 'scroll' ? 'Scroll with Up and Down' : null,
+    element.checked === true ? 'On' : element.checked === false && /CheckBox|Switch|Toggle/.test(element.role ?? '') ? 'Off' : null,
+    element.selected ? 'Selected' : null,
+    element.disabled ? 'Not available right now' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** Every labelled control, the open page first, at full touch size. */
 export const ControlsList = memo(function ControlsList({ snapshot, onPress, onScroll, disabled }: ViewProps) {
   const theme = useTheme();
-  const controls = useMemo(() => actionableControls(snapshot), [snapshot]);
+  const controls = useMemo(() => pageFirst(snapshot, actionableControls(snapshot)), [snapshot]);
   return (
     <FlatList
       data={controls}
@@ -134,11 +158,11 @@ export const ControlsList = memo(function ControlsList({ snapshot, onPress, onSc
               <Text variant="label" numberOfLines={2} style={{ opacity: item.disabled ? 0.5 : 1 }}>
                 {describe(item)}
               </Text>
-              <Text variant="caption" tone="muted">
-                {[humanRole(item.role), item.selected ? 'selected' : null, item.checked === true ? 'on' : null, item.disabled ? 'unavailable' : null]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </Text>
+              {plainState(item) ? (
+                <Text variant="caption" tone="muted">
+                  {plainState(item)}
+                </Text>
+              ) : null}
             </Pressable>
             {kind === 'scroll' ? (
               <View style={{ flexDirection: 'row', gap: theme.space.compact }}>
@@ -153,21 +177,66 @@ export const ControlsList = memo(function ControlsList({ snapshot, onPress, onSc
   );
 });
 
-/** The visible conversation text, so replies can be read on the phone. */
-export const ConversationView = memo(function ConversationView({ snapshot, onScroll, disabled }: Omit<ViewProps, 'onPress'>) {
+/**
+ * The conversation, so replies can be read on the phone. Sovra does not expose message
+ * text through Inspect, so when the desktop can capture screenshots this shows the
+ * conversation region of the latest one; otherwise the labelled text inside it.
+ */
+export const ConversationView = memo(function ConversationView({
+  snapshot,
+  screenshot,
+  onScroll,
+  disabled,
+}: Omit<ViewProps, 'onPress'> & { screenshot: string | null }) {
   const theme = useTheme();
-  const lines = useMemo(() => readableText(snapshot), [snapshot]);
+  const [width, setWidth] = useState(0);
+  const area = useMemo(() => conversationArea(snapshot), [snapshot]);
+  const lines = useMemo(() => readableText(snapshot, area), [snapshot, area]);
+  const size = useMemo(() => windowSize(snapshot), [snapshot]);
   const scroller = useMemo(
     () =>
+      area ??
       snapshot.elements
         .filter((element) => element.visible && kindOf(element) === 'scroll')
-        .sort((a, b) => b.bounds.width * b.bounds.height - a.bounds.width * a.bounds.height)[0] ?? null,
-    [snapshot],
+        .sort((a, b) => b.bounds.width * b.bounds.height - a.bounds.width * a.bounds.height)[0] ??
+      null,
+    [snapshot, area],
   );
+  const scale = area && width > 0 ? width / area.bounds.width : 0;
   return (
     <View style={{ flex: 1, gap: theme.space.small }}>
-      <ScrollView contentContainerStyle={{ gap: theme.space.small + 4, paddingBottom: theme.space.medium }}>
-        {lines.length === 0 ? (
+      <ScrollView
+        onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
+        // Pinch to read small text in the picture (iOS; Android ignores zoom props).
+        maximumZoomScale={3}
+        minimumZoomScale={1}
+        contentContainerStyle={{ gap: theme.space.small + 4, paddingBottom: theme.space.medium }}>
+        {screenshot && area && scale > 0 ? (
+          <View
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={['Conversation on your computer', ...lines.map((element) => element.label)].join('. ')}
+            style={{
+              width,
+              height: area.bounds.height * scale,
+              overflow: 'hidden',
+              borderRadius: theme.radius.card,
+              borderWidth: theme.layout.hairline,
+              borderColor: theme.colors.border,
+            }}>
+            <Image
+              source={{ uri: `data:image/png;base64,${screenshot}` }}
+              contentFit="fill"
+              style={{
+                position: 'absolute',
+                left: -area.bounds.x * scale,
+                top: -area.bounds.y * scale,
+                width: size.width * scale,
+                height: size.height * scale,
+              }}
+            />
+          </View>
+        ) : lines.length === 0 ? (
           <Text tone="secondary">Nothing to read yet. Send a message below, or open a chat on your computer.</Text>
         ) : (
           lines.map((element) => (
